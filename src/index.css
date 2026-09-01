@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ORMONIA — paleta cálida y térrea (HSL) */
+    --background: 40 33% 97%;        /* ivory */
+    --foreground: 25 18% 13%;       /* warm ink casi negro */
+
+    --card: 40 33% 97%;
+    --card-foreground: 25 18% 13%;
+
+    --popover: 40 33% 97%;
+    --popover-foreground: 25 18% 13%;
+
+    --primary: 25 40% 20%;          /* deep-brown */
+    --primary-foreground: 40 33% 97%; /* ivory */
+
+    --secondary: 35 38% 88%;        /* sand */
+    --secondary-foreground: 25 40% 20%;
+
+    --muted: 38 32% 90%;            /* beige */
+    --muted-foreground: 25 12% 33%; /* warm gray-brown (AA sobre ivory y sand) */
+
+    --accent: 16 55% 38%;           /* terracotta (AA sobre ivory y sand) */
+    --accent-foreground: 40 33% 97%;
+
+    --destructive: 4 70% 45%;
+    --destructive-foreground: 40 33% 97%;
+
+    --border: 35 26% 80%;           /* sand oscurecido */
+    --input: 35 26% 80%;
+    --ring: 70 18% 40%;             /* olive */
+
+    --radius: 0.125rem;             /* casi recto: sin esquinas grandes */
+
+    --sidebar-background: 38 32% 94%;
+    --sidebar-foreground: 25 18% 13%;
+    --sidebar-primary: 25 40% 20%;
+    --sidebar-primary-foreground: 40 33% 97%;
+    --sidebar-accent: 35 38% 88%;
+    --sidebar-accent-foreground: 25 40% 20%;
+    --sidebar-border: 35 26% 80%;
+    --sidebar-ring: 70 18% 40%;
+
+    /* Paleta de marca sin mapeo shadcn */
+    --color-ivory: 40 33% 97%;
+    --color-sand: 35 38% 88%;
+    --color-beige: 38 32% 90%;
+    --color-warm-brown: 28 42% 45%;
+    --color-deep-brown: 25 40% 20%;
+    --color-ink: 25 18% 13%;
+    --color-terracotta: 16 55% 38%;
+    --color-olive: 70 18% 40%;
+    --color-amber: 38 70% 50%;
+
+    /*
+      Tipografía display.
+      Cuando la fuente de marca 'Field Studies Flora' esté disponible,
+      añade un bloque @font-face y colócala primera en esta lista.
+      Fraunces actúa como fallback serif editorial mientras tanto.
+    */
+    --font-display: 'Field Studies Flora', 'Fraunces', ui-serif, Georgia, serif;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .dark {
+    --background: 25 18% 10%;
+    --foreground: 40 30% 94%;
+
+    --card: 25 18% 10%;
+    --card-foreground: 40 30% 94%;
+
+    --popover: 25 18% 10%;
+    --popover-foreground: 40 30% 94%;
+
+    --primary: 40 33% 94%;
+    --primary-foreground: 25 40% 20%;
+
+    --secondary: 25 14% 18%;
+    --secondary-foreground: 40 30% 94%;
+
+    --muted: 25 14% 18%;
+    --muted-foreground: 38 16% 68%;
+
+    --accent: 16 55% 56%;
+    --accent-foreground: 40 33% 97%;
+
+    --destructive: 4 70% 50%;
+    --destructive-foreground: 40 33% 97%;
+
+    --border: 25 12% 22%;
+    --input: 25 12% 22%;
+    --ring: 70 18% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: hsl(var(--color-terracotta));
+    color: hsl(var(--color-ivory));
+  }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+/* Respetar prefers-reduced-motion en toda la plataforma */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

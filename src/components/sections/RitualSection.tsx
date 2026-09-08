@@ -10,7 +10,7 @@ export function RitualSection() {
   const ref = useScrollReveal<HTMLDivElement>();
 
   return (
-    <section id="ritual" className="relative overflow-hidden bg-[#342115] px-6 py-28 text-[#f2ebdd] md:px-8 lg:py-40">
+    <section id="ritual" data-header-tone="light" className="relative overflow-hidden bg-[#342115] px-6 py-28 text-[#f2ebdd] md:px-8 lg:py-40">
       <div className="pointer-events-none absolute -right-[16vw] -top-[24vw] h-[52vw] w-[52vw] rounded-full border border-[#f2ebdd]/10" aria-hidden="true" />
       <div ref={ref} className="mx-auto grid w-full max-w-[1200px] gap-20 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
         <div>

@@ -3,10 +3,19 @@ import { gsap } from "@/lib/gsap";
 import { rhythmCopy } from "@/data/content";
 
 /**
- * El Ritmo — Sprint 03.8
+ * El Ritmo / El agua — Sprint 02, reubicada en el Integration Pass 01–03.
  *
- * The water is now a living cinematic background, independent from scroll.
- * Scroll only orchestrates copy and the entrance/exit of the section.
+ * La sección ya no va inmediatamente después del Hero: ahora vive después de
+ * la zona comercial, donde en HOME 05 se fusionará con El Registro. Por eso
+ * la entrada ya no disuelve desde la pradera y la salida ya no lava hacia el
+ * mineral de El Ciclo: entra desde el campo de tierra profunda que la precede
+ * y sale hacia el campo claro del bloque de newsletter.
+ *
+ * El video es un fondo cinematográfico vivo, independiente del scroll: loop
+ * autónomo lento, sin scrub de `currentTime`. El scroll solo orquesta el copy
+ * y la entrada/salida de la escena.
+ *
+ * El componente y sus assets se conservan intactos para su ubicación final.
  */
 export function RhythmSection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -103,9 +112,9 @@ export function RhythmSection() {
             0.545
           );
 
-          // A warm mineral veil appears only at the very end, creating a soft
-          // handoff into El Ciclo instead of a hard cut.
-          tl.to(exitRef.current, { opacity: 0.82, duration: 0.25, ease: "none" }, 0.75);
+          // Un velo claro aparece solo al final: entrega suave hacia el bloque
+          // de El Registro en vez de un corte seco.
+          tl.to(exitRef.current, { opacity: 0.9, duration: 0.25, ease: "none" }, 0.75);
           tl.to(statements[2], { autoAlpha: 0, y: -12, duration: 0.1 }, 0.89);
           tl.to([labelRef.current, hintRef.current], { autoAlpha: 0, duration: 0.08 }, 0.92);
 
@@ -133,16 +142,21 @@ export function RhythmSection() {
     <section
       id="ritmo"
       ref={sectionRef}
-      className="relative bg-[#6a4a35] md:h-[330vh]"
+      className="relative bg-[#171713] md:h-[330vh]"
       aria-labelledby="rhythm-heading"
     >
+      {/* Zona de contraste del header: termina antes del velo claro de salida. */}
+      <div
+        aria-hidden="true"
+        data-header-tone="light"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[76%]"
+      />
       <div ref={stageRef} className="relative hidden h-screen overflow-hidden bg-[#171713] md:block">
-        <div
-          ref={landscapeRef}
-          className="absolute inset-0 bg-[url('/pradera-y-caballo.png')] bg-cover bg-[position:68%_38%]"
-          aria-hidden="true"
-        >
-          <div className="absolute inset-0 bg-[#191511]/75 backdrop-blur-[8px]" />
+        {/* Entrada: continúa el campo de tierra profunda de la escena anterior
+            y se disuelve en el agua. Conserva la materia de marca al fondo. */}
+        <div ref={landscapeRef} className="absolute inset-0 bg-[#342115]" aria-hidden="true">
+          <div className="absolute inset-0 bg-[url('/pradera-y-caballo.png')] bg-cover bg-[position:68%_38%] opacity-[0.14] blur-[14px] saturate-[0.4]" />
+          <div className="absolute inset-0 bg-[#191511]/58" />
         </div>
 
         <div ref={filmRef} className="absolute inset-0 opacity-0" aria-hidden="true">
@@ -163,7 +177,7 @@ export function RhythmSection() {
 
         <div
           ref={exitRef}
-          className="pointer-events-none absolute inset-0 bg-[#6a4a35] opacity-0 mix-blend-multiply"
+          className="pointer-events-none absolute inset-0 bg-[#e3d7c2] opacity-0"
           aria-hidden="true"
         />
         <div

@@ -10,7 +10,7 @@ export function ClosingSection() {
   const rippleRef = useRef<HTMLDivElement>(null);
 
   return (
-    <section className="bg-deepBrown px-6 py-32 text-center md:px-8 md:py-48">
+    <section data-header-tone="light" className="bg-deepBrown px-6 py-32 text-center md:px-8 md:py-48">
       <div
         ref={rippleRef}
         className="mx-auto flex w-full max-w-[1200px] flex-col items-center gap-6"

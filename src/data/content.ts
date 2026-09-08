@@ -9,12 +9,35 @@ export const brandCopy = {
   shortPitch: "Serums rituales formulados para cada fase del ciclo.",
 };
 
+/**
+ * Barra superior del header. Umbral aprobado: ARS 145.000.
+ */
+export const announcementCopy = {
+  message: "Envío gratis en órdenes mayores a $145.000",
+};
+
 export const nav = {
-  primary: [
-    { label: "Productos", href: "/products" },
-    { label: "Aprender", href: "/learn" },
-    { label: "Descubrir tu ritual", href: "/discover" },
+  /** Zona izquierda del header (desktop). Jerarquía aprobada en el Master Plan. */
+  left: [
+    { label: "Tienda", href: "/products" },
     { label: "Sobre Ormonia", href: "/about" },
+    { label: "Explorar", href: "/learn" },
+  ],
+  /**
+   * Zona derecha del header. Todavía no existe cuenta, buscador ni carrito:
+   * se muestran como afordancias inertes hasta que Shopify esté integrado.
+   * No inventar rutas ni comportamiento de compra antes de ese sprint.
+   */
+  utilities: [
+    { label: "Cuenta", href: null as string | null },
+    { label: "Buscar", href: null as string | null },
+    { label: "Carrito", href: null as string | null },
+  ],
+  primary: [
+    { label: "Tienda", href: "/products" },
+    { label: "Sobre Ormonia", href: "/about" },
+    { label: "Explorar", href: "/learn" },
+    { label: "Descubrir tu ritual", href: "/discover" },
     // Placeholder: futuro punto de entrada al carrito/ritual (se conectará en un sprint posterior).
     { label: "Tu ritual", href: null as string | null },
   ],
@@ -24,6 +47,24 @@ export const heroCopy = {
   line1: "Lo que cambia adentro",
   line2: "se expresa afuera.",
   cta: "Descubrir el ritual",
+  /** Ancla interna del bloque Pack x4. Mientras no exista PDP/Shopify. */
+  ctaTarget: "#pack-x4",
+};
+
+/**
+ * Popup diferido de descubrimiento (Sprint 01).
+ * No implementa el quiz: solo la invitación. La lógica de fenotipos se define
+ * en Sprint 07, cuando la CEO cierre el modelo.
+ */
+export const discoverPopupCopy = {
+  eyebrow: "Descubrimiento",
+  title: "Descubrí tu piel",
+  body: "Tu fenotipo describe cómo responde tu piel a lo largo del ciclo. Reconocerlo es el primer gesto para construir un ritual más propio.",
+  incentive: "5% off en tu primer ritual",
+  cta: "Descubrir mi piel",
+  ctaHref: "/discover",
+  dismiss: "Ahora no",
+  close: "Cerrar",
 };
 
 /**
@@ -61,6 +102,45 @@ export const fourPhasesCopy = {
   eyebrow: "Los serums",
   title: "Un serum para cada fase.",
   body: "Fórmulas pensadas para el estado real de tu piel en cada momento del ciclo.",
+};
+
+/**
+ * HOME 03 — Pack x4 / Ritual completo.
+ *
+ * Momento comercial central: comprar los cuatro serums juntos es la forma de
+ * vivir el ciclo completo. `price` y `savings` quedan preparados para cuando
+ * existan precios definitivos y se pueda comunicar la ventaja frente a
+ * comprarlos por separado; mientras son `null`, esos bloques no se renderizan.
+ *
+ * `ctaHref` resuelve provisionalmente en la ruta de productos existente. Cuando
+ * exista el PDP del pack en Shopify, se cambia solo esta línea.
+ *
+ * El bloque no vuelve a nombrar los cuatro serums: el usuario acaba de verlos
+ * en El Ciclo. Acá el mensaje es el ritual completo, no cada fórmula.
+ */
+export const packCopy = {
+  eyebrow: "El ritual completo · Pack x4",
+  titleLines: ["Las 4 fases,", "un solo ritual."],
+  body: "Cuatro fórmulas pensadas para acompañar cada fase de tu ciclo.",
+  cta: "Descubrir el ritual completo",
+  ctaHref: "/products",
+  price: null as string | null,
+  savings: null as string | null,
+  media: {
+    primary: {
+      src: "/products/ritual-completo.png",
+      alt: "Los cuatro serums Ormonia sobre telas y piedra, con sus etiquetas de fase visibles.",
+    },
+    /**
+     * Segunda fotografía real para el hover. Si en el futuro se reemplaza por
+     * material de campaña, se cambia acá; si se deja en `null`, el componente
+     * hace fallback a la imagen principal sin romper la interacción.
+     */
+    hover: {
+      src: "/products/pack-4-serums.png",
+      alt: "Los cuatro serums Ormonia en una escena nocturna, sobre terciopelo y lino.",
+    } as { src: string; alt: string } | null,
+  },
 };
 
 export const insideOutsideCopy = {

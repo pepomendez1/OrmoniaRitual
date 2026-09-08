@@ -4,28 +4,45 @@ import { cn } from "@/lib/utils";
 import { getLenis } from "@/lib/lenis";
 
 type ScrollCTAButtonTone = "light" | "dark";
+type ScrollCTAButtonShape = "underline" | "outline";
 
 export interface ScrollCTAButtonProps
   extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> {
-  /** Selector/anchor del elemento destino, p. ej. "#ritmo". */
+  /** Selector/anchor del elemento destino, p. ej. "#pack-x4". */
   href: string;
   /** "dark" (sobre fondos claros, igual a CTAButton) | "light" (sobre imagen). */
   tone?: ScrollCTAButtonTone;
+  /**
+   * "underline" — CTA editorial de línea, para dentro del cuerpo de la página.
+   * "outline" — marco fino y fondo transparente, solo texto, para cuando el
+   * CTA es protagonista sobre fotografía a pantalla completa: tiene presencia
+   * sin pesar como una cápsula sólida ni competir con el headline. Sin ícono
+   * ni símbolo: la única señal interactiva extra es el cursor circular, que
+   * se activa con `data-cursor-expand` desde el consumidor.
+   */
+  shape?: ScrollCTAButtonShape;
+  /**
+   * Desplazamiento extra al llegar al destino. Negativo = frena antes, para
+   * dejar aire bajo el header sticky. El fallback nativo usa `scroll-mt-*`.
+   */
+  offset?: number;
   /** Acepta atributos data-* arbitrarios (p. ej. data-cursor-expand). */
   [key: `data-${string}`]: string | number | boolean | undefined;
 }
 
 /**
- * CTA editorial de scroll interno. Mismo lenguaje visual que CTAButton
- * (línea de base + subrayado animado que crece en hover) pero envuelve un
- * `<a href>` en vez de un `<Link>`, así no navega de ruta: hace scroll suave
- * dentro de la misma página vía Lenis, con fallback a `scrollIntoView` si
- * Lenis no está activo (reduced motion / aún no montado). Accessible por
- * teclado al ser un `<a>` real, y hereda el foco visible global.
+ * CTA de scroll interno. No navega de ruta: hace scroll suave dentro de la
+ * misma página vía Lenis, con fallback a `scrollIntoView` si Lenis no está
+ * activo (reduced motion / aún no montado). Accesible por teclado al ser un
+ * `<a>` real, y hereda el foco visible global.
+ *
+ * `shape` decide el lenguaje visual: línea editorial o botón pill.
  */
 export function ScrollCTAButton({
   href,
   tone = "dark",
+  shape = "underline",
+  offset = -88,
   className,
   onClick,
   children,
@@ -46,7 +63,7 @@ export function ScrollCTAButton({
     try {
       const lenis = getLenis();
       if (lenis) {
-        lenis.scrollTo(el, { offset: 0, duration: 1.2 });
+        lenis.scrollTo(el, { offset, duration: 1.4 });
         return;
       }
     } catch {
@@ -55,6 +72,25 @@ export function ScrollCTAButton({
 
     el.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
   };
+
+  if (shape === "outline") {
+    return (
+      <a
+        href={href}
+        {...rest}
+        onClick={handleClick}
+        className={cn(
+          "inline-flex h-[48px] items-center justify-center rounded-[12px] border bg-transparent px-7 font-sans text-[11px] uppercase tracking-[0.18em] transition-[background-color,border-color,color] duration-500 ease-out md:h-[52px] md:px-9 md:text-[12px]",
+          isLight
+            ? "border-ivory/65 text-ivory hover:border-ivory hover:bg-ivory hover:text-ink"
+            : "border-ink/45 text-ink hover:border-ink hover:bg-ink hover:text-ivory",
+          className
+        )}
+      >
+        {children}
+      </a>
+    );
+  }
 
   return (
     <Button

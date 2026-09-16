@@ -4,6 +4,11 @@ export interface Product {
   slug: string;
   name: string;
   phase: CyclePhase | null;
+  /**
+   * Precio en pesos, sin decimales. PROVISIONAL: cuando exista Shopify, este
+   * campo pasa a alimentarse desde ahí. Nunca escribir precios en el JSX.
+   */
+  price?: number | null;
   tagline: string;
   description: string;
   ingredients: string[];
@@ -32,6 +37,7 @@ export const phaseLabel: Record<CyclePhase, string> = {
 export const products: Product[] = [
   {
     slug: "clarity",
+    price: 55000,
     imageSrc: "/products/clarity.png",
     name: "CLARITY",
     phase: "Menstrual",
@@ -47,6 +53,7 @@ export const products: Product[] = [
   },
   {
     slug: "bloom",
+    price: 55000,
     imageSrc: "/products/bloom.png",
     name: "BLOOM",
     phase: "Follicular",
@@ -62,6 +69,7 @@ export const products: Product[] = [
   },
   {
     slug: "radiance",
+    price: 55000,
     imageSrc: "/products/radiance.png",
     name: "RADIANCE",
     phase: "Ovulatory",
@@ -76,6 +84,7 @@ export const products: Product[] = [
   },
   {
     slug: "restore",
+    price: 55000,
     imageSrc: "/products/restore.png",
     name: "RESTORE",
     phase: "Luteal",
@@ -94,6 +103,7 @@ export const auraTeaser: Product = {
   slug: "aura",
   name: "AURA",
   phase: null,
+  price: null,
   tagline: "Niebla de aura.",
   description:
     "Una niebla facial de cierre del ritual. Próximamente, para sellar y extender el cuidado más allá del rostro.",

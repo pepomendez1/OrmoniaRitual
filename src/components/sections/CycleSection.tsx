@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, type CSSProperties } from "react";
 import { gsap } from "@/lib/gsap";
+import { getLenis } from "@/lib/lenis";
 import { products, phaseLabel, type CyclePhase } from "@/data/products";
 
 const cycleActives: Record<CyclePhase, string[]> = {
@@ -7,13 +8,6 @@ const cycleActives: Record<CyclePhase, string[]> = {
   Follicular: ["Niacinamida", "Glicerina", "Ácido hialurónico", "Péptidos"],
   Ovulatory: ["Vitamina C", "Glicerina", "Panthenol"],
   Luteal: ["Centella asiática", "Glicerina", "Pentapéptido-18"],
-};
-
-const phaseBenefits: Record<CyclePhase, string> = {
-  Menstrual: "Calma y acompaña la sensibilidad de los días de repliegue.",
-  Follicular: "Hidrata y acompaña el regreso gradual de vitalidad.",
-  Ovulatory: "Ilumina y acompaña el momento de mayor presencia de la piel.",
-  Luteal: "Sostiene la barrera y acompaña la necesidad de restauración.",
 };
 
 /** Opacidad del texto secundario. Verificada ≥4.5:1 contra las cuatro bases. */
@@ -208,12 +202,11 @@ interface CarouselSlot {
 /**
  * Orden espacial: borde izquierdo → protagonista → borde derecho.
  *
- * Avanzar una posición hacia la derecha trae el siguiente serum al centro y
- * devuelve el del extremo derecho al extremo izquierdo, de modo que el ciclo
- * es continuo y no una sucesión de slides.
+ * Los cuatro puntos son puntos de control, no estados discretos: la posición
+ * real de cada frasco se interpola de forma continua a lo largo de ellos.
  *
- * Todos los frascos usan `transformOrigin` en su base, así la escala no los
- * deja flotando: comparten línea de apoyo y la jerarquía se lee limpia.
+ * Todos usan `transformOrigin` en su base, así la escala no los deja flotando:
+ * comparten línea de apoyo y la jerarquía se lee limpia.
  */
 function makeSlots(spread: [number, number, number]): CarouselSlot[] {
   const [far, near, right] = spread;
@@ -225,17 +218,119 @@ function makeSlots(spread: [number, number, number]): CarouselSlot[] {
   ];
 }
 
+/** Cuánto se aleja el frasco que sale, y desde dónde entra el que vuelve. */
+const WRAP_TRAVEL = 130;
+
+const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
+const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+  const f = clamp01((x - edge0) / (edge1 - edge0));
+  return f * f * (3 - 2 * f);
+};
+
+/** Hex → [r,g,b], para poder componer la tinta de forma continua. */
+function toRgb(hex: string): [number, number, number] {
+  const v = parseInt(hex.replace("#", ""), 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+
+interface Placement {
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  opacity: number;
+  zIndex: number;
+  blur: number;
+}
+
+/**
+ * Posición de un frasco para una coordenada continua `u ∈ [0,4)`.
+ *
+ * Entre 0 y 3 interpola a lo largo de los cuatro puntos de control. El tramo
+ * 3 → 4 es el reciclado: el frasco se aleja por la derecha mientras se apaga y
+ * vuelve a entrar por la izquierda encendiéndose. La opacidad vale exactamente
+ * 0 en la mitad de ese tramo, así que el cambio de lado no puede verse por
+ * mucho que se scrollee despacio — no es un teleport dependiente del timing.
+ */
+function placement(u: number, slots: CarouselSlot[]): Placement {
+  if (u <= 3) {
+    const i = Math.floor(u);
+    const f = u - i;
+    const a = slots[i];
+    const b = slots[Math.min(i + 1, slots.length - 1)];
+    return {
+      x: lerp(a.x, b.x, f),
+      y: lerp(a.lift, b.lift, f),
+      scale: lerp(a.scale, b.scale, f),
+      rotation: lerp(a.rotation, b.rotation, f),
+      opacity: lerp(a.opacity, b.opacity, f),
+      zIndex: lerp(a.zIndex, b.zIndex, f),
+      blur: lerp(a.blur, b.blur, f),
+    };
+  }
+
+  const last = slots[3];
+  const first = slots[0];
+  const f = u - 3;
+
+  if (f < 0.5) {
+    const g = f / 0.5;
+    return {
+      x: lerp(last.x, last.x + WRAP_TRAVEL, g),
+      y: lerp(last.lift, last.lift + 10, g),
+      scale: lerp(last.scale, last.scale * 0.88, g),
+      rotation: last.rotation,
+      opacity: last.opacity * Math.pow(1 - g, 2.2),
+      zIndex: last.zIndex,
+      blur: lerp(last.blur, last.blur + 0.8, g),
+    };
+  }
+
+  const g = (f - 0.5) / 0.5;
+  return {
+    x: lerp(first.x - WRAP_TRAVEL, first.x, g),
+    y: lerp(first.lift + 10, first.lift, g),
+    scale: lerp(first.scale * 0.88, first.scale, g),
+    rotation: first.rotation,
+    opacity: first.opacity * Math.pow(g, 2.2),
+    zIndex: first.zIndex,
+    blur: lerp(first.blur + 0.8, first.blur, g),
+  };
+}
+
 // CLARITY arranca en el centro. BLOOM queda inmediatamente a su izquierda para
 // que un desplazamiento hacia la derecha lo convierta en el próximo protagonista.
 const initialSlotByProduct = [2, 1, 0, 3];
 
-/** Comienzo de cada transición y su duración, en unidades de timeline. */
-const TRANSITION_STARTS = [0.24, 0.49, 0.74];
-const TRANSITION_STEP = 0.17;
+/** Transiciones a recorrer: CLARITY → BLOOM → RADIANCE → RESTORE. */
+const TRANSITIONS = 3;
 
-/** Alto de la sección y distancia real de pin, en vh. Deben coincidir con el CSS. */
-const SECTION_VH = 420;
+/**
+ * Alto de la sección y distancia real de pin, en vh. Deben coincidir con el CSS.
+ * 180vh de pin = 1.8 viewports para recorrer las cuatro fases.
+ */
+const SECTION_VH = 280;
 const PIN_VH = SECTION_VH - 100;
+
+/**
+ * Respiros mínimos al entrar y salir, en fracción del recorrido. Solo existen
+ * para que los velos de continuidad resuelvan; no son pausas de la rotación.
+ */
+const LEAD_IN = 0.05;
+const LEAD_OUT = 0.07;
+
+/** Progreso del scroll → coordenada continua de fase `t ∈ [0, 3]`. */
+function phaseAt(progress: number): number {
+  const span = 1 - LEAD_IN - LEAD_OUT;
+  return clamp01((progress - LEAD_IN) / span) * TRANSITIONS;
+}
+
+/** Inversa: dónde está el scroll cuando la fase `k` es protagonista. */
+function progressOfPhase(index: number): number {
+  const span = 1 - LEAD_IN - LEAD_OUT;
+  return LEAD_IN + (index / TRANSITIONS) * span;
+}
 
 /**
  * Tramos verticales de la sección en los que la escena de fondo es oscura.
@@ -248,14 +343,15 @@ const PIN_VH = SECTION_VH - 100;
  */
 function darkScenePercent(): Array<{ top: number; height: number }> {
   const pinShare = PIN_VH / SECTION_VH;
-  // Punto medio de cada transición = frontera perceptiva entre fases.
-  const boundaries = TRANSITION_STARTS.map(
-    (start) => (start + TRANSITION_STEP / 2) * pinShare * 100
-  );
-  const edges = [0, ...boundaries, 100];
+  // Frontera perceptiva entre fases: el punto medio entre dos protagonistas.
+  const edges = [0];
+  for (let k = 0; k < TRANSITIONS; k += 1) {
+    edges.push(progressOfPhase(k + 0.5) * pinShare * 100);
+  }
+  edges.push(100);
 
-  const phases: CyclePhase[] = ["Menstrual", "Follicular", "Ovulatory", "Luteal"];
-  return phases
+  const order: CyclePhase[] = ["Menstrual", "Follicular", "Ovulatory", "Luteal"];
+  return order
     .map((phase, index) => ({
       dark: atmospheres[phase].darkBase,
       top: edges[index],
@@ -291,6 +387,7 @@ export function CycleSection() {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const entryVeilRef = useRef<HTMLDivElement>(null);
   const exitVeilRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<ScrollTrigger | null>(null);
 
   const phases = useMemo(
     () => products.filter((product) => product.phase !== null),
@@ -298,6 +395,29 @@ export function CycleSection() {
   );
 
   const darkRanges = useMemo(darkScenePercent, []);
+
+  /**
+   * Lleva el scroll al punto del recorrido donde la fase pedida es
+   * protagonista. No cambia el estado a mano: mueve el scroll y deja que el
+   * mismo `render` continuo resuelva la escena, así la llegada se anima igual
+   * que si el usuario hubiese scrolleado.
+   */
+  const goToPhase = useCallback((index: number) => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const target =
+      trigger.start + (trigger.end - trigger.start) * progressOfPhase(index);
+
+    const lenis = getLenis();
+    if (lenis) {
+      lenis.scrollTo(target, { duration: 1.1 });
+      return;
+    }
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
+  }, []);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -312,50 +432,107 @@ export function CycleSection() {
       (el): el is HTMLSpanElement => el !== null
     );
 
-    const phaseInk = phases.map(
-      (product) => atmospheres[product.phase as CyclePhase].ink
+    const phaseInk = phases.map((product) =>
+      toRgb(atmospheres[product.phase as CyclePhase].ink)
     );
     const tinted = [eyebrowRef.current, headingRef.current, ...railLabels];
 
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
 
-      /** Coloca la escena en su estado inicial: CLARITY al centro. */
-      const reset = (slots: CarouselSlot[]) => {
-        bottles.forEach((bottle, productIndex) => {
-          const slot = slots[initialSlotByProduct[productIndex]];
-          gsap.set(bottle, {
-            transformOrigin: "50% 100%",
-            x: slot.x,
-            y: slot.lift,
-            scale: slot.scale,
-            rotation: slot.rotation,
-            opacity: slot.opacity,
-            zIndex: slot.zIndex,
-            filter: `blur(${slot.blur}px)`,
-          });
-        });
-
-        gsap.set(copies, { autoAlpha: 0, y: 18 });
-        gsap.set(copies[0], { autoAlpha: 1, y: 0 });
-        gsap.set(scenes, { autoAlpha: 0 });
-        gsap.set(scenes[0], { autoAlpha: 1 });
-        gsap.set(lights, { autoAlpha: 0 });
-        gsap.set(lights[0], { autoAlpha: 1 });
-        gsap.set(railLabels, { opacity: 0.4 });
-        gsap.set(railLabels[0], { opacity: 1 });
-        gsap.set(railHighlightRef.current, { xPercent: 0 });
-        gsap.set(tinted, { color: phaseInk[0] });
-        gsap.set([railHighlightRef.current, railTrackRef.current], {
-          backgroundColor: phaseInk[0],
-        });
-      };
-
       const build = (spread: [number, number, number]) => () => {
         const slots = makeSlots(spread);
-        reset(slots);
+
+        gsap.set(bottles, { transformOrigin: "50% 100%" });
         gsap.set(entryVeilRef.current, { autoAlpha: 0.55 });
         gsap.set(exitVeilRef.current, { autoAlpha: 0 });
+
+        /**
+         * Único punto de escritura de la escena.
+         *
+         * Todo —frascos, fondo, luz, copy, tinta e indicador— se deriva del
+         * mismo escalar `t`. No hay keyframes ni umbrales: cualquier posición
+         * de scroll produce un estado válido, y scrollear hacia atrás es
+         * exactamente simétrico.
+         */
+        const render = (progress: number) => {
+          const t = phaseAt(progress);
+
+          // 1. Frascos: rotación física continua.
+          bottles.forEach((bottle, productIndex) => {
+            const u = (initialSlotByProduct[productIndex] + t) % slots.length;
+            const at = placement(u, slots);
+            gsap.set(bottle, {
+              x: at.x,
+              y: at.y,
+              scale: at.scale,
+              rotation: at.rotation,
+              opacity: at.opacity,
+              zIndex: Math.round(at.zIndex),
+              filter: `blur(${at.blur.toFixed(2)}px)`,
+            });
+          });
+
+          /*
+           * 2. Fondos: revelado acumulativo. Cada escena se monta sobre la
+           * anterior y empieza a entrar mucho antes de que su fase llegue al
+           * centro, así el color nuevo ya está presente durante la transición.
+           */
+          const sceneAlpha: number[] = [1];
+          for (let k = 1; k < scenes.length; k += 1) {
+            sceneAlpha[k] = smoothstep(k - 0.85, k - 0.05, t);
+          }
+          scenes.forEach((scene, k) => {
+            gsap.set(scene, { opacity: sceneAlpha[k] });
+          });
+
+          // 3. Luz de contacto: peso por fase, para que no se acumulen.
+          lights.forEach((light, k) => {
+            gsap.set(light, { opacity: Math.max(0, 1 - Math.abs(t - k)) });
+          });
+
+          // 4. Copy: relevo limpio, sin dos textos legibles a la vez.
+          copies.forEach((copy, k) => {
+            const d = t - k;
+            gsap.set(copy, {
+              autoAlpha: 1 - smoothstep(0.3, 0.48, Math.abs(d)),
+              y: Math.max(-16, Math.min(16, -d * 22)),
+            });
+          });
+
+          /*
+           * 5. Tinta compartida: se compone con los mismos pesos que los
+           * fondos, así el contraste del titular acompaña la escena en vez de
+           * cruzarla con su propio tiempo.
+           */
+          let ink: [number, number, number] = [...phaseInk[0]];
+          for (let k = 1; k < phaseInk.length; k += 1) {
+            const next = phaseInk[k];
+            const a = sceneAlpha[k];
+            ink = [
+              lerp(ink[0], next[0], a),
+              lerp(ink[1], next[1], a),
+              lerp(ink[2], next[2], a),
+            ];
+          }
+          const inkCss = `rgb(${ink.map((c) => Math.round(c)).join(",")})`;
+          gsap.set(tinted, { color: inkCss });
+          gsap.set([railHighlightRef.current, railTrackRef.current], {
+            backgroundColor: inkCss,
+          });
+
+          // 6. Indicador: deriva del mismo `t`, no puede desfasarse.
+          gsap.set(railHighlightRef.current, { xPercent: 100 * t });
+          railLabels.forEach((label, k) => {
+            gsap.set(label, {
+              opacity: 0.35 + 0.65 * Math.max(0, 1 - Math.abs(t - k)),
+            });
+          });
+        };
+
+        render(0);
+
+        const driver = { progress: 0 };
 
         const tl = gsap.timeline({
           scrollTrigger: {
@@ -363,153 +540,36 @@ export function CycleSection() {
             start: "top top",
             end: "bottom bottom",
             pin: stage,
-            scrub: 0.9,
+            scrub: 1,
             anticipatePin: 1,
           },
         });
 
-        // Entrada: continúa el mineral con el que cierra el Hero y se hunde en
-        // el bordo de CLARITY, sin corte de color en el borde de la sección.
-        tl.to(entryVeilRef.current, { autoAlpha: 0, duration: 0.08, ease: "none" }, 0);
-
-        // Un instante de asentamiento antes de la primera rotación.
-        tl.fromTo(
-          bottles,
-          { yPercent: 2 },
-          { yPercent: 0, duration: 0.09, ease: "power2.out", stagger: 0.01 },
-          0.02
+        tl.to(
+          driver,
+          {
+            progress: 1,
+            duration: 1,
+            ease: "none",
+            onUpdate: () => render(driver.progress),
+          },
+          0
+        );
+        tl.to(
+          entryVeilRef.current,
+          { autoAlpha: 0, duration: LEAD_IN, ease: "none" },
+          0
+        );
+        tl.to(
+          exitVeilRef.current,
+          { autoAlpha: 0.8, duration: LEAD_OUT, ease: "none" },
+          1 - LEAD_OUT
         );
 
-        TRANSITION_STARTS.forEach((start, transitionIndex) => {
-          const active = transitionIndex + 1;
-          const previous = transitionIndex;
-
-          /*
-           * Una sola sub-timeline por cambio de fase. Todo lo que define la
-           * fase entra acá en la posición 0 y con la misma duración, así el
-           * frasco, el fondo, el copy y el indicador se mueven juntos.
-           */
-          const step = gsap.timeline({
-            defaults: { duration: TRANSITION_STEP, ease: "power2.inOut" },
-          });
-
-          bottles.forEach((bottle, productIndex) => {
-            const currentSlotIndex =
-              (initialSlotByProduct[productIndex] + transitionIndex) % slots.length;
-            const nextSlotIndex = (currentSlotIndex + 1) % slots.length;
-            const slot = slots[nextSlotIndex];
-            const current = slots[currentSlotIndex];
-            const wrapping =
-              currentSlotIndex === slots.length - 1 && nextSlotIndex === 0;
-
-            if (wrapping) {
-              // El serum del extremo derecho se retira detrás del conjunto y
-              // reaparece por la izquierda. La opacidad baja durante el salto
-              // evita el teletransporte sin cortar la continuidad del ciclo.
-              step.to(
-                bottle,
-                {
-                  x: current.x + 110,
-                  y: current.lift + 10,
-                  scale: current.scale * 0.9,
-                  opacity: 0.1,
-                  duration: TRANSITION_STEP * 0.42,
-                  ease: "power1.in",
-                },
-                0
-              );
-              step.set(
-                bottle,
-                {
-                  x: slot.x - 80,
-                  y: slot.lift + 10,
-                  scale: slot.scale * 0.88,
-                  rotation: slot.rotation,
-                  zIndex: slot.zIndex,
-                  filter: `blur(${slot.blur + 0.8}px)`,
-                },
-                TRANSITION_STEP * 0.46
-              );
-              step.to(
-                bottle,
-                {
-                  x: slot.x,
-                  y: slot.lift,
-                  scale: slot.scale,
-                  rotation: slot.rotation,
-                  opacity: slot.opacity,
-                  filter: `blur(${slot.blur}px)`,
-                  duration: TRANSITION_STEP * 0.54,
-                  ease: "power2.out",
-                },
-                TRANSITION_STEP * 0.46
-              );
-            } else {
-              step.to(
-                bottle,
-                {
-                  x: slot.x,
-                  y: slot.lift,
-                  scale: slot.scale,
-                  rotation: slot.rotation,
-                  opacity: slot.opacity,
-                  zIndex: slot.zIndex,
-                  filter: `blur(${slot.blur}px)`,
-                },
-                0
-              );
-            }
-          });
-
-          // Fondo y luz de contacto: mismo arranque y misma duración.
-          step.to(scenes[previous], { autoAlpha: 0 }, 0);
-          step.to(scenes[active], { autoAlpha: 1 }, 0);
-          step.to(lights[previous], { autoAlpha: 0 }, 0);
-          step.to(lights[active], { autoAlpha: 1 }, 0);
-
-          // Copy: crossfade centrado en el mismo tramo, no desplazado.
-          step.to(
-            copies[previous],
-            {
-              autoAlpha: 0,
-              y: -12,
-              duration: TRANSITION_STEP * 0.46,
-              ease: "power2.in",
-            },
-            0
-          );
-          step.fromTo(
-            copies[active],
-            { autoAlpha: 0, y: 14 },
-            {
-              autoAlpha: 1,
-              y: 0,
-              duration: TRANSITION_STEP * 0.6,
-              ease: "power2.out",
-            },
-            TRANSITION_STEP * 0.4
-          );
-
-          // Color de los elementos compartidos (eyebrow, título, indicador).
-          step.to(tinted, { color: phaseInk[active], ease: "none" }, 0);
-          step.to(
-            [railHighlightRef.current, railTrackRef.current],
-            { backgroundColor: phaseInk[active], ease: "none" },
-            0
-          );
-
-          // Indicador: el tramo activo viaja hacia la derecha, en el mismo
-          // sentido, tiempo y easing con los que se desplazan los frascos.
-          step.to(railHighlightRef.current, { xPercent: 100 * active }, 0);
-          step.to(railLabels[previous], { opacity: 0.4 }, 0);
-          step.to(railLabels[active], { opacity: 1 }, 0);
-
-          tl.add(step, start);
-        });
-
-        // Salida: la tierra de RESTORE se abre hacia el campo con el que arranca
-        // el bloque comercial, para entregar sin salto de color.
-        tl.to(exitVeilRef.current, { autoAlpha: 0.8, duration: 0.07, ease: "none" }, 0.93);
+        triggerRef.current = tl.scrollTrigger ?? null;
+        return () => {
+          triggerRef.current = null;
+        };
       };
 
       mm.add(
@@ -523,7 +583,25 @@ export function CycleSection() {
 
       // Reduced motion: escena estática legible, sin pin ni rotación.
       mm.add("(min-width: 768px) and (prefers-reduced-motion: reduce)", () => {
-        reset(makeSlots([-228, -120, 148]));
+        const slots = makeSlots([-228, -120, 148]);
+        gsap.set(bottles, { transformOrigin: "50% 100%" });
+        bottles.forEach((bottle, productIndex) => {
+          const at = placement(initialSlotByProduct[productIndex], slots);
+          gsap.set(bottle, {
+            x: at.x,
+            y: at.y,
+            scale: at.scale,
+            rotation: at.rotation,
+            opacity: at.opacity,
+            zIndex: Math.round(at.zIndex),
+          });
+        });
+        gsap.set(copies, { autoAlpha: 0 });
+        gsap.set(copies[0], { autoAlpha: 1, y: 0 });
+        gsap.set(scenes, { opacity: 0 });
+        gsap.set(scenes[0], { opacity: 1 });
+        gsap.set(lights, { opacity: 0 });
+        gsap.set(lights[0], { opacity: 1 });
         gsap.set(entryVeilRef.current, { autoAlpha: 0 });
         gsap.set(exitVeilRef.current, { autoAlpha: 0 });
       });
@@ -538,7 +616,7 @@ export function CycleSection() {
     <section
       id="ciclo"
       ref={sectionRef}
-      className="relative bg-[#5A2A32] md:h-[420vh]"
+      className="relative bg-[#5A2A32] md:h-[280vh]"
       aria-labelledby="cycle-heading"
     >
       {/* Tramos con escena oscura: el header invierte a texto ivory al pasar
@@ -632,7 +710,7 @@ export function CycleSection() {
             style={{ color: atmospheres.Menstrual.ink }}
             className="mb-12 font-display text-[clamp(3rem,5.6vw,6.6rem)] leading-[0.91] tracking-[-0.04em]"
           >
-            Cuatro fases.<br />Un mismo ritual.
+            Tu piel cambia.<br />Tu ritual también.
           </h2>
 
           <div className="relative min-h-[235px]">
@@ -648,34 +726,21 @@ export function CycleSection() {
                   className="absolute inset-x-0 top-0"
                   style={{ color: atmosphere.ink, opacity: index === 0 ? 1 : 0 }}
                 >
-                  <div
-                    className="mb-4 flex items-center gap-3 font-sans text-[10px] uppercase tracking-[0.22em]"
+                  <p
+                    className="mb-5 font-sans text-[10px] uppercase tracking-[0.22em]"
                     style={{ opacity: INK_LABEL }}
                   >
-                    <span>Fase {phaseLabel[phase]}</span>
-                    <span
-                      className="h-px w-8"
-                      style={{ backgroundColor: "currentColor", opacity: 0.4 }}
-                    />
-                    <span>{product.name}</span>
-                  </div>
+                    Fase {phaseLabel[phase]} · {product.name}
+                  </p>
                   <p className="font-display text-[clamp(2.1rem,3.35vw,4.1rem)] leading-[0.98] tracking-[-0.025em]">
                     {product.tagline}
                   </p>
                   <p
-                    className="mt-4 max-w-md font-sans text-[13px] leading-relaxed"
+                    className="mt-7 font-sans text-[9px] uppercase leading-relaxed tracking-[0.18em]"
                     style={{ opacity: INK_BODY }}
                   >
-                    {phaseBenefits[phase]}
+                    {cycleActives[phase].join(" · ")}
                   </p>
-                  <div
-                    className="mt-6 flex max-w-lg flex-wrap gap-x-4 gap-y-2 font-sans text-[9px] uppercase tracking-[0.15em]"
-                    style={{ opacity: INK_LABEL }}
-                  >
-                    {cycleActives[phase].map((active) => (
-                      <span key={active}>{active}</span>
-                    ))}
-                  </div>
                 </div>
               );
             })}
@@ -726,16 +791,25 @@ export function CycleSection() {
           </div>
           <div className="mt-3.5 grid grid-cols-4">
             {phases.map((product, index) => (
-              <span
+              <button
                 key={`rail-${product.slug}`}
-                ref={(el) => {
-                  railLabelRefs.current[index] = el;
-                }}
-                style={{ color: atmospheres.Menstrual.ink }}
-                className="font-sans text-[9px] uppercase tracking-[0.16em]"
+                type="button"
+                onClick={() => goToPhase(index)}
+                aria-label={`Ir a la fase ${phaseLabel[
+                  product.phase as CyclePhase
+                ].toLowerCase()}`}
+                className="group/rail w-fit cursor-pointer bg-transparent p-0 text-left"
               >
-                {phaseLabel[product.phase as CyclePhase]}
-              </span>
+                <span
+                  ref={(el) => {
+                    railLabelRefs.current[index] = el;
+                  }}
+                  style={{ color: atmospheres.Menstrual.ink }}
+                  className="block font-sans text-[9px] uppercase tracking-[0.16em] transition-opacity duration-300 group-hover/rail:!opacity-100"
+                >
+                  {phaseLabel[product.phase as CyclePhase]}
+                </span>
+              </button>
             ))}
           </div>
         </div>
@@ -754,7 +828,7 @@ export function CycleSection() {
               El ciclo
             </p>
             <h2 className="font-display text-[clamp(3rem,14vw,5rem)] leading-[0.93] tracking-[-0.035em]">
-              Cuatro fases.<br />Un mismo ritual.
+              Tu piel cambia.<br />Tu ritual también.
             </h2>
           </div>
         </div>
@@ -778,17 +852,12 @@ export function CycleSection() {
               ))}
               <div className="relative z-10 flex min-h-[80svh] flex-col justify-between">
                 <div>
-                  <div
-                    className="mb-4 flex items-center gap-3 font-sans text-[10px] uppercase tracking-[0.2em]"
+                  <p
+                    className="mb-5 font-sans text-[10px] uppercase tracking-[0.2em]"
                     style={{ opacity: INK_LABEL }}
                   >
-                    <span>Fase {phaseLabel[phase]}</span>
-                    <span
-                      className="h-px w-8"
-                      style={{ backgroundColor: "currentColor", opacity: 0.4 }}
-                    />
-                    <span>{product.name}</span>
-                  </div>
+                    Fase {phaseLabel[phase]} · {product.name}
+                  </p>
                   <h3 className="font-display text-5xl leading-none">{product.tagline}</h3>
                 </div>
                 <img
@@ -796,22 +865,12 @@ export function CycleSection() {
                   alt={`${product.name}, serum para la fase ${phaseLabel[phase].toLowerCase()}`}
                   className="mx-auto my-5 h-[50svh] w-auto object-contain drop-shadow-[0_24px_32px_rgba(20,10,6,0.3)]"
                 />
-                <div>
-                  <p
-                    className="font-sans text-sm leading-relaxed"
-                    style={{ opacity: INK_BODY }}
-                  >
-                    {phaseBenefits[phase]}
-                  </p>
-                  <div
-                    className="mt-5 flex flex-wrap gap-x-4 gap-y-2 font-sans text-[10px] uppercase tracking-[0.15em]"
-                    style={{ opacity: INK_LABEL }}
-                  >
-                    {cycleActives[phase].map((active) => (
-                      <span key={active}>{active}</span>
-                    ))}
-                  </div>
-                </div>
+                <p
+                  className="font-sans text-[10px] uppercase leading-relaxed tracking-[0.18em]"
+                  style={{ opacity: INK_BODY }}
+                >
+                  {cycleActives[phase].join(" · ")}
+                </p>
               </div>
             </article>
           );

@@ -98,10 +98,18 @@ export const cycleCopy = {
   ],
 };
 
+/**
+ * HOME 04 — Productos individuales.
+ *
+ * El mensaje baja el énfasis en la vida cíclica: los serums se compran por lo
+ * que la piel necesita, no por estar en una fase determinada. La fase sigue
+ * informando cada producto, pero como dato secundario, no como condición.
+ *
+ * Sin eyebrow: "Los serums" repetía la idea del titular y sumaba ruido.
+ */
 export const fourPhasesCopy = {
-  eyebrow: "Los serums",
-  title: "Un serum para cada fase.",
-  body: "Fórmulas pensadas para el estado real de tu piel en cada momento del ciclo.",
+  title: "Los esenciales de ORMONIA.",
+  body: "Fórmulas pensadas para acompañar lo que tu piel necesita.",
 };
 
 /**
@@ -119,26 +127,33 @@ export const fourPhasesCopy = {
  * en El Ciclo. Acá el mensaje es el ritual completo, no cada fórmula.
  */
 export const packCopy = {
-  eyebrow: "El ritual completo · Pack x4",
+  eyebrow: "Pack x4 · Ritual completo",
   titleLines: ["Las 4 fases,", "un solo ritual."],
-  body: "Cuatro fórmulas pensadas para acompañar cada fase de tu ciclo.",
+  /**
+   * Provisional. Cuando el pricing definitivo confirme el número, esta línea
+   * pasa a comunicar el ahorro concreto ("Ahorrá X% con el ritual completo").
+   * No inventar el porcentaje antes de esa confirmación.
+   */
+  body: "Una forma simple de recorrer el ritual completo y ahorrar eligiendo el set.",
   cta: "Descubrir el ritual completo",
   ctaHref: "/products",
   price: null as string | null,
   savings: null as string | null,
   media: {
-    primary: {
-      src: "/products/ritual-completo.png",
-      alt: "Los cuatro serums Ormonia sobre telas y piedra, con sus etiquetas de fase visibles.",
-    },
     /**
-     * Segunda fotografía real para el hover. Si en el futuro se reemplaza por
-     * material de campaña, se cambia acá; si se deja en `null`, el componente
-     * hace fallback a la imagen principal sin romper la interacción.
+     * Assets provisionales del estuche del Pack x4 (1200×896).
+     *
+     * `pack-box-dark.png` —la caja negra vista desde arriba— queda disponible
+     * como tercera imagen futura. No hay galería todavía.
      */
+    primary: {
+      src: "/products/pack-box-open.png",
+      alt: "Estuche abierto del Pack x4 de Ormonia con los serums en su interior.",
+    },
+    /** En `null` la pieza usa una sola imagen estable, sin crossfade. */
     hover: {
-      src: "/products/pack-4-serums.png",
-      alt: "Los cuatro serums Ormonia en una escena nocturna, sobre terciopelo y lino.",
+      src: "/products/pack-box-hand.png",
+      alt: "",
     } as { src: string; alt: string } | null,
   },
 };

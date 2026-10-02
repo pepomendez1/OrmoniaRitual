@@ -220,6 +220,8 @@ No se cambian sin validación del equipo: no inventar claims también aplica a r
 | T6 | `vite.config.ts` usa `host: "::"`: falla en entornos solo IPv4 (pasó en este sandbox) | Menor. Se resuelve con `pnpm dev --host 127.0.0.1` sin tocar la config |
 | T7 | Reduced motion | Las secciones GSAP complejas (Hero, Ciclo, Agua, Pack) lo contemplan. Las secciones simples usan `useScrollReveal`, que también lo respeta. Sin hallazgos bloqueantes |
 | T8 | `data-header-tone` | Consistente en las secciones oscuras. Las claras caen al `defaultTone="dark"`, que es correcto |
+| T9 | `src/lib/lenis.ts`: `initLenis()` registra `gsap.ticker.add(...)` y nunca lo quita. `SmoothScrollProvider` hace `lenis.destroy()` al desmontar, pero el callback del ticker sigue llamando `raf()` sobre la instancia destruida, y `getLenis()` sigue devolviéndola. Hoy no rompe porque el provider no se desmonta en producción; sí se acumula con HMR o `StrictMode` | Deuda técnica, revisar después. Guardar la función del ticker y hacer `gsap.ticker.remove(fn)` + `lenisInstance = null` en el cleanup |
+| T10 | `src/App.tsx`: `createBrowserRouter(routers)` se ejecuta dentro del render de `App`. Cualquier re-render de `App` crea un router nuevo y remonta todo el árbol de rutas (estado, animaciones y ScrollTriggers incluidos) | Deuda técnica, revisar después. Crear el router una sola vez a nivel de módulo |
 
 ---
 

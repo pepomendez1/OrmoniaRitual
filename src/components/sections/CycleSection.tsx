@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
 import { gsap } from "@/lib/gsap";
 import { getLenis } from "@/lib/lenis";
 import { products, phaseLabel, type CyclePhase } from "@/data/products";
@@ -425,10 +425,38 @@ export function CycleSection() {
     window.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
   }, []);
 
-  useEffect(() => {
+  /*
+   * Layout effect, no `useEffect`: al desmontar, React suelta los refs y saca
+   * el DOM en la fase de commit, pero la limpieza de un `useEffect` corre más
+   * tarde (asíncrona en navegaciones con transición). En ese hueco el ticker
+   * de GSAP seguía avanzando el scrub y `render` escribía sobre refs ya en
+   * `null`. La limpieza de un layout effect corre en el mismo commit que
+   * suelta los refs, así timeline y ScrollTrigger mueren antes que su DOM.
+   */
+  useLayoutEffect(() => {
     const section = sectionRef.current;
     const stage = stageRef.current;
-    if (!section || !stage) return;
+    const railHighlight = railHighlightRef.current;
+    const railTrack = railTrackRef.current;
+    const entryVeil = entryVeilRef.current;
+    const exitVeil = exitVeilRef.current;
+    const eyebrow = eyebrowRef.current;
+    const heading = headingRef.current;
+    if (
+      !section ||
+      !stage ||
+      !railHighlight ||
+      !railTrack ||
+      !entryVeil ||
+      !exitVeil ||
+      !eyebrow ||
+      !heading
+    ) {
+      return;
+    }
+
+    /** Corta cualquier callback que GSAP dispare durante o después del revert. */
+    let disposed = false;
 
     const bottles = bottleRefs.current.filter((el): el is HTMLDivElement => el !== null);
     const copies = copyRefs.current.filter((el): el is HTMLDivElement => el !== null);
@@ -441,7 +469,7 @@ export function CycleSection() {
     const phaseInk = phases.map((product) =>
       toRgb(atmospheres[product.phase as CyclePhase].ink)
     );
-    const tinted = [eyebrowRef.current, headingRef.current, ...railLabels];
+    const tinted = [eyebrow, heading, ...railLabels];
 
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
@@ -456,6 +484,8 @@ export function CycleSection() {
        * usa la misma función con valores enteros.
        */
       const paint = (slots: ReturnType<typeof makeSlots>) => (t: number) => {
+        if (disposed) return;
+
         // 1. Frascos: rotación física continua.
         bottles.forEach((bottle, productIndex) => {
           const u = (initialSlotByProduct[productIndex] + t) % slots.length;
@@ -515,12 +545,12 @@ export function CycleSection() {
         }
         const inkCss = `rgb(${ink.map((c) => Math.round(c)).join(",")})`;
         gsap.set(tinted, { color: inkCss });
-        gsap.set([railHighlightRef.current, railTrackRef.current], {
+        gsap.set([railHighlight, railTrack], {
           backgroundColor: inkCss,
         });
 
         // 6. Indicador: deriva del mismo `t`, no puede desfasarse.
-        gsap.set(railHighlightRef.current, { xPercent: 100 * t });
+        gsap.set(railHighlight, { xPercent: 100 * t });
         railLabels.forEach((label, k) => {
           gsap.set(label, {
             opacity: 0.35 + 0.65 * Math.max(0, 1 - Math.abs(t - k)),
@@ -534,8 +564,8 @@ export function CycleSection() {
         const render = (progress: number) => renderAt(phaseAt(progress));
 
         gsap.set(bottles, { transformOrigin: "50% 100%" });
-        gsap.set(entryVeilRef.current, { autoAlpha: 0.55 });
-        gsap.set(exitVeilRef.current, { autoAlpha: 0 });
+        gsap.set(entryVeil, { autoAlpha: 0.55 });
+        gsap.set(exitVeil, { autoAlpha: 0 });
 
         render(0);
 
@@ -563,12 +593,12 @@ export function CycleSection() {
           0
         );
         tl.to(
-          entryVeilRef.current,
+          entryVeil,
           { autoAlpha: 0, duration: LEAD_IN, ease: "none" },
           0
         );
         tl.to(
-          exitVeilRef.current,
+          exitVeil,
           { autoAlpha: 0.8, duration: LEAD_OUT, ease: "none" },
           1 - LEAD_OUT
         );
@@ -597,8 +627,8 @@ export function CycleSection() {
       mm.add("(min-width: 768px) and (prefers-reduced-motion: reduce)", () => {
         const renderAt = paint(makeSlots([-228, -120, 148]));
         gsap.set(bottles, { transformOrigin: "50% 100%" });
-        gsap.set(entryVeilRef.current, { autoAlpha: 0 });
-        gsap.set(exitVeilRef.current, { autoAlpha: 0 });
+        gsap.set(entryVeil, { autoAlpha: 0 });
+        gsap.set(exitVeil, { autoAlpha: 0 });
         renderAt(0);
         showPhaseRef.current = renderAt;
         return () => {
@@ -609,7 +639,10 @@ export function CycleSection() {
       return () => mm.revert();
     }, section);
 
-    return () => ctx.revert();
+    return () => {
+      disposed = true;
+      ctx.revert();
+    };
   }, [phases]);
 
   return (

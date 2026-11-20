@@ -167,6 +167,13 @@ const DiscoverSkinResult = () => {
           >
             {skinResultCopy.home}
           </Link>
+          {/* Después de la lectura, no antes: la tienda como salida secundaria. */}
+          <Link
+            to="/products"
+            className="font-sans text-[11px] uppercase tracking-[0.18em] text-ink/66 transition-colors duration-300 hover:text-ink"
+          >
+            {skinResultCopy.shop}
+          </Link>
         </div>
       </div>
     </DiscoverShell>

@@ -79,8 +79,11 @@ export default {
 				ink: "hsl(var(--color-ink))",
 			},
 			fontFamily: {
+				// Tokens tipográficos: ver `src/index.css` (@font-face y roles).
 				display: ["var(--font-display)", "serif"],
+				editorial: ["var(--font-editorial)", "serif"],
 				sans: ["var(--font-sans)", "sans-serif"],
+				accent: ["var(--font-accent)", "serif"],
 			},
 			/*
 			 * Pasos intermedios de opacidad usados como modificador de color

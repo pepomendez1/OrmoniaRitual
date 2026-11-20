@@ -1,7 +1,7 @@
 import { getLenis } from "./lenis";
 
 /**
- * Anclas internas de la Home ("/#pack-x4", "/#ritmo"…).
+ * Anclas internas de la Home ("/#el-ritual", "/#ciclo"…).
  *
  * React Router no hace scroll a un hash: cambia la URL y nada más. Estas
  * utilidades resuelven el scroll con Lenis (con fallback nativo si no está

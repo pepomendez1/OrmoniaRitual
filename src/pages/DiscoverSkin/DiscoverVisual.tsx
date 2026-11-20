@@ -27,6 +27,8 @@ export function DiscoverVisual({ group }: DiscoverVisualProps) {
     >
       {scenes.map((scene) => {
         const active = scene.id === group;
+        // Foto a sangre → leyenda ivory; campo tonal o ilustración clara → ink.
+        const onPhoto = Boolean(scene.media) && scene.fit !== "contain";
         return (
           <div
             key={scene.id}
@@ -51,8 +53,20 @@ export function DiscoverVisual({ group }: DiscoverVisualProps) {
               <img
                 src={scene.media.src}
                 alt=""
-                className="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
+                decoding="async"
+                style={{ objectPosition: scene.objectPosition ?? "center" }}
+                className={cn(
+                  "absolute inset-0 h-full w-full",
+                  scene.fit === "contain"
+                    ? "object-contain px-[10%] pb-[22%] pt-[8%]"
+                    : "object-cover"
+                )}
               />
+            )}
+
+            {scene.captionScrim && (
+              <div className="absolute inset-0" style={{ backgroundImage: scene.captionScrim }} />
             )}
 
             {/* Grano muy leve: evita que el campo tonal se lea como un bloque
@@ -72,7 +86,7 @@ export function DiscoverVisual({ group }: DiscoverVisualProps) {
               <span
                 className={cn(
                   "font-sans text-[10px] uppercase tracking-[0.28em]",
-                  scene.media ? "text-ivory/70" : "text-ink/55"
+                  onPhoto ? "text-ivory/70" : "text-ink/55"
                 )}
               >
                 {scene.label}
@@ -80,12 +94,12 @@ export function DiscoverVisual({ group }: DiscoverVisualProps) {
               <p
                 className={cn(
                   "max-w-[320px] font-display text-[clamp(1.4rem,1.8vw,2rem)] leading-[1.12] tracking-[-0.025em]",
-                  scene.media ? "text-ivory" : "text-ink"
+                  onPhoto ? "text-ivory" : "text-ink"
                 )}
               >
                 {scene.caption}
               </p>
-              {scene.pending && (
+              {!scene.media && scene.pending && (
                 <span className="mt-3 font-sans text-[9px] uppercase tracking-[0.2em] text-ink/35">
                   {scene.pending}
                 </span>

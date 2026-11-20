@@ -8,8 +8,16 @@ project-root/
   ├── public/
   │   └── locales/           # public/locales/{code}.json translation files
   ├── src/
+  │   ├── commerce/          # Commerce layer: cart contract, local adapter, CartProvider, account session (see commerce/README.md)
   │   ├── components/        # All reusable UI components
+  │   │   ├── brand/         # Wordmark: logotipo oficial ORMONIA® en SVG (nunca escribirlo con una fuente)
+  │   │   ├── forms/         # Brand forms (NewsletterForm)
+  │   │   ├── media/         # ProductionPhoto: fotos de producción con crop desktop/mobile
+  │   │   ├── layout/        # Header, Footer, MobileMenu, RootLayout (global overlays), cursor, smooth scroll
+  │   │   ├── sections/      # Home sections (Hero, Pack, Esenciales, Calendario, Ciclo…)
+  │   │   ├── shop/          # Commerce UI: cards, price, quantity, quick add, cart drawer, search overlay
   │   │   └── ui/            # Prebuilt and custom UI components, grouped by function
+  │   ├── data/              # Content and catalog (products, copy, seo, calendar, policies, demo data)
   │   ├── hooks/             # Custom React hooks
   │   ├── i18n/              # i18n runtime: config.ts (entry) + util.ts (helpers)
   │   ├── lib/               # Utility functions and libraries

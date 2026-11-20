@@ -1,15 +1,9 @@
-import { useEffect } from "react";
-import { brandCopy } from "@/data/content";
-
-const HOME_TITLE = `${brandCopy.wordmark} — ${brandCopy.tagline}`;
+import { usePageMeta } from "./usePageMeta";
 
 /**
- * Título de la pestaña por página ("Tienda — ORMONIA"). Sin argumento deja el
- * título de marca de la Home. Lo usan también lectores de pantalla y el
- * historial del navegador para distinguir páginas.
+ * Atajo histórico: solo el título ("Tienda — ORMONIA"). Sin argumento deja el
+ * título de marca. Para description/OG usar `usePageMeta` directamente.
  */
 export function usePageTitle(title?: string | null) {
-  useEffect(() => {
-    document.title = title ? `${title} — ${brandCopy.wordmark}` : HOME_TITLE;
-  }, [title]);
+  usePageMeta({ title: title ?? null });
 }

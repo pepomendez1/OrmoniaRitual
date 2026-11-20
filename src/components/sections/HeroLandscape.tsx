@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import { ScrollCTAButton } from "@/components/ui/ScrollCTAButton";
 import { heroCopy, heroMedia } from "@/data/content";
+import { productionMedia } from "@/data/productionMedia";
+import { HERO_FADE_MS, useHeroAlternate } from "@/hooks/useHeroAlternate";
 
 /**
  * Portada — El paisaje.
@@ -22,21 +24,32 @@ import { heroCopy, heroMedia } from "@/data/content";
  * completo: mientras el usuario siga acá, la navegación es ivory sobre la
  * fotografía, sin fondo ni blur en ningún momento del scroll.
  *
- * El CTA no navega: hace scroll suave hasta el bloque del Pack x4. Cuando
+ * El CTA no navega: hace scroll suave hasta el bloque de El Ritual. Cuando
  * exista Shopify se evaluará dirigirlo al PDP del pack.
  *
- * La salida por scroll ya no oscurece hacia el agua: ahora entrega a El Ciclo,
- * así que el paisaje se profundiza y se enfría hacia el tono mineral con el
- * que abre CLARITY, sin corte visible.
+ * Salida por scroll: el paisaje se desenfoca apenas y el texto se va. Entrega
+ * a El Ritual, sobre campo claro, con un corte limpio: ya no tiñe la foto hacia
+ * el mineral de El Ciclo (que ahora vive más abajo) ni hace un fundido de
+ * color para "coser" ambas escenas.
+ *
+ * Segundo estado: el fondo alterna, en un crossfade lento, entre la pradera
+ * y la foto de campaña de las cuatro modelos (`productionMedia.hero`). Solo
+ * cambia la fotografía: claim, CTA y header quedan quietos. Ver
+ * `useHeroAlternate` para tiempos, precarga y en qué casos no corre.
  *
  * Respeta `prefers-reduced-motion`: contenido visible de inmediato, sin
- * respiración ambiental ni scroll-scrub.
+ * respiración ambiental, sin scroll-scrub y sin alternar fondos.
  */
 export function HeroLandscape() {
   const sectionRef = useRef<HTMLElement>(null);
   const mediaWrapRef = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const scrollOverlayRef = useRef<HTMLDivElement>(null);
+  /** Capa con las dos fotografías: el scrub de salida la afecta entera. */
+  const layerRef = useRef<HTMLDivElement>(null);
+  const alternate = productionMedia.hero.alternate;
+  const { mounted: alternateMounted, showing: alternateShowing } = useHeroAlternate(
+    alternate.src,
+    alternate.minWidth
+  );
   const textRef = useRef<HTMLDivElement>(null);
   const statementRef = useRef<HTMLHeadingElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
@@ -79,7 +92,7 @@ export function HeroLandscape() {
         });
       }
 
-      // 3. Transición de scroll hacia El Ciclo: todo simultáneo, scrub.
+      // 3. Salida por scroll hacia El Ritual: todo simultáneo, scrub.
       const scrub = gsap.timeline({
         scrollTrigger: {
           trigger: sectionRef.current,
@@ -90,14 +103,9 @@ export function HeroLandscape() {
       });
       scrub
         .fromTo(
-          imgRef.current,
+          layerRef.current,
           { scale: 1, filter: "blur(0px)" },
           { scale: 1.07, filter: "blur(7px)", ease: "none", duration: 1 },
-          0
-        )
-        .to(
-          scrollOverlayRef.current,
-          { opacity: 0.62, ease: "none", duration: 1 },
           0
         )
         .to(textRef.current, { opacity: 0, y: -22, ease: "none", duration: 1 }, 0);
@@ -125,12 +133,35 @@ export function HeroLandscape() {
           object-position: recorte responsive preparado para el encuadre final.
           Ajustable aquí cuando se defina el framing definitivo de la imagen.
         */}
-        <img
-          ref={imgRef}
-          src={heroMedia.src}
-          alt={heroMedia.alt}
-          className="h-full w-full object-cover object-[65%_45%] md:object-[68%_38%]"
-        />
+        <div ref={layerRef} className="relative h-full w-full">
+          <img
+            src={heroMedia.src}
+            alt={heroMedia.alt}
+            className="h-full w-full object-cover object-[65%_45%] md:object-[68%_38%]"
+          />
+          {/*
+            Segundo estado: se monta recién cuando la foto está decodificada,
+            y entra/sale solo por opacidad, encima de la original.
+          */}
+          {alternateMounted && (
+            <div
+              aria-hidden="true"
+              className="absolute inset-0"
+              style={{
+                opacity: alternateShowing ? 1 : 0,
+                transition: `opacity ${HERO_FADE_MS}ms ease-in-out`,
+              }}
+            >
+              <img
+                src={alternate.src}
+                alt=""
+                className="h-full w-full object-cover"
+                style={{ objectPosition: alternate.objectPosition }}
+              />
+              <div className="absolute inset-0" style={{ backgroundImage: alternate.scrim }} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Velos de legibilidad, siempre sutiles: nunca un bloque plano. */}
@@ -141,12 +172,6 @@ export function HeroLandscape() {
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-ink/42 via-ink/8 to-transparent"
-      />
-      {/* Enfría el paisaje hacia el mineral con el que abre El Ciclo. */}
-      <div
-        ref={scrollOverlayRef}
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[#a4907f] opacity-0"
       />
 
       {/*

@@ -1,7 +1,7 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import { gsap } from "@/lib/gsap";
 import { getLenis } from "@/lib/lenis";
-import { products, phaseLabel, type CyclePhase } from "@/data/products";
+import { products, phaseLabel, type CyclePhase, type CycleScene, type Product } from "@/data/products";
 
 const cycleActives: Record<CyclePhase, string[]> = {
   Menstrual: ["Jojoba", "Caléndula", "Rosa mosqueta", "Vitamina E"],
@@ -10,183 +10,38 @@ const cycleActives: Record<CyclePhase, string[]> = {
   Luteal: ["Centella asiática", "Glicerina", "Pentapéptido-18"],
 };
 
-/** Opacidad del texto secundario. Verificada ≥4.5:1 contra las cuatro bases. */
+/** Opacidad del texto secundario sobre la tinta de cada escena. */
 const INK_BODY = 0.84;
 const INK_LABEL = 0.76;
 
-const IVORY = "#F2EBDD";
-
 /**
- * Atmósfera por fase.
+ * Escena fotográfica de cada fase.
  *
- * El color base de cada escena viene del packaging del serum correspondiente:
- *
- *   CLARITY  → fase menstrual  → bordo / vino profundo
- *   BLOOM    → fase folicular  → verde muy claro / salvia cremosa
- *   RADIANCE → fase ovulatoria → verde oliva / lima suave
- *   RESTORE  → fase lútea      → marrón tierra profundo
- *
- * Sobre esa base, cada fase tiene además su propia temperatura, dirección de
- * luz, materia, textura y sombra. Son capas CSS declarativas, pensadas para
- * sustituirse una a una por fotografía de producción sin tocar la rotación.
- *
- * No se representan plantas identificables: solo campos de color, luz y grano.
+ * Cada sérum vive dentro de su propia fotografía de campaña. Imagen, recortes,
+ * tono y tinta se declaran en `data/products.ts` (`cycleScene`): cambiar una
+ * foto o un crop no toca nada de este archivo.
  */
-interface Atmosphere {
-  /** Color base, tomado del packaging. */
-  base: string;
-  /** Texto — contraste verificado contra `base`. */
-  ink: string;
-  /** Luz de contacto detrás del protagonista. */
-  keyLight: string;
-  /** Ubicación de esa luz: cambia con la fase, así el frasco no se apoya igual. */
-  keyLightAt: CSSProperties;
-  /** `true` si la base es oscura: define el tono del header sobre la escena. */
-  darkBase: boolean;
-  /** Capas de la escena, de atrás hacia adelante. */
-  layers: CSSProperties[];
+function sceneOf(product: Product): CycleScene {
+  const scene = product.cycleScene;
+  if (!scene) throw new Error(`El Ciclo: falta cycleScene en ${product.slug}`);
+  return scene;
 }
 
-const atmospheres: Record<CyclePhase, Atmosphere> = {
-  // CLARITY — bordo profundo. Luz baja y lateral, sombra alta, quietud.
-  Menstrual: {
-    base: "#5A2A32",
-    ink: IVORY,
-    darkBase: true,
-    keyLight:
-      "radial-gradient(closest-side, rgba(232,196,186,0.30), rgba(232,196,186,0))",
-    keyLightAt: { left: "66vw", top: "70vh", width: "36vw", height: "44vh" },
-    layers: [
-      {
-        backgroundImage: "url('/pradera-y-caballo.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "34% 72%",
-        opacity: 0.07,
-        filter: "blur(30px) saturate(0.25) brightness(0.6)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(58% 62% at 16% 88%, rgba(226,182,172,0.26) 0%, rgba(226,182,172,0) 66%)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(88% 60% at 52% -12%, rgba(28,10,14,0.62) 0%, rgba(28,10,14,0) 62%)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(rgba(242,235,221,0.09) 0.6px, transparent 0.7px)",
-        backgroundSize: "3px 3px",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(80% 82% at 50% 52%, rgba(24,8,12,0) 30%, rgba(24,8,12,0.46) 100%)",
-      },
-    ],
-  },
-  // BLOOM — salvia cremosa. Luz de mañana alta a la izquierda, aire, lino.
-  Follicular: {
-    base: "#D7DDC8",
-    ink: "#26291C",
-    darkBase: false,
-    keyLight:
-      "radial-gradient(closest-side, rgba(252,250,240,0.62), rgba(252,250,240,0))",
-    keyLightAt: { left: "66vw", top: "28vh", width: "40vw", height: "50vh" },
-    layers: [
-      {
-        backgroundImage: "url('/pradera-y-caballo.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "48% 52%",
-        opacity: 0.12,
-        filter: "blur(12px) saturate(0.9) brightness(1.16)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(66% 70% at 12% 4%, rgba(253,251,242,0.86) 0%, rgba(253,251,242,0) 60%)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(60% 58% at 92% 98%, rgba(126,142,92,0.30) 0%, rgba(126,142,92,0) 70%)",
-      },
-      {
-        backgroundImage:
-          "repeating-linear-gradient(102deg, rgba(255,255,255,0.16) 0 1px, rgba(255,255,255,0) 1px 5px)",
-      },
-      {
-        backgroundImage:
-          "linear-gradient(0deg, rgba(58,66,40,0.20) 0%, rgba(58,66,40,0) 28%)",
-      },
-    ],
-  },
-  // RADIANCE — oliva / lima suave. Sol alto y duro desde la derecha, contraste.
-  Ovulatory: {
-    base: "#B4BC78",
-    ink: "#23260F",
-    darkBase: false,
-    keyLight:
-      "radial-gradient(closest-side, rgba(255,250,214,0.58), rgba(255,250,214,0))",
-    keyLightAt: { left: "80vw", top: "18vh", width: "38vw", height: "46vh" },
-    layers: [
-      {
-        backgroundImage: "url('/pradera-y-caballo.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "72% 34%",
-        opacity: 0.1,
-        filter: "blur(20px) saturate(1.4) brightness(1.05)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(44% 48% at 88% 2%, rgba(255,252,224,0.9) 0%, rgba(246,244,186,0.30) 40%, rgba(246,244,186,0) 74%)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(72% 64% at 4% 100%, rgba(94,104,44,0.44) 0%, rgba(94,104,44,0) 70%)",
-      },
-      {
-        backgroundImage:
-          "repeating-linear-gradient(108deg, rgba(255,252,224,0.14) 0 2px, rgba(255,252,224,0) 2px 26px)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(120% 104% at 14% 112%, rgba(44,50,16,0.34) 0%, rgba(44,50,16,0) 54%)",
-      },
-    ],
-  },
-  // RESTORE — tierra profunda. Crepúsculo, luz cálida baja, sombra envolvente.
-  Luteal: {
-    base: "#4A3325",
-    ink: IVORY,
-    darkBase: true,
-    keyLight:
-      "radial-gradient(closest-side, rgba(226,172,116,0.32), rgba(226,172,116,0))",
-    keyLightAt: { left: "72vw", top: "78vh", width: "42vw", height: "42vh" },
-    layers: [
-      {
-        backgroundImage: "url('/pradera-y-caballo.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "38% 62%",
-        opacity: 0.09,
-        filter: "blur(34px) saturate(0.4) brightness(0.5)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(52% 44% at 68% 96%, rgba(224,168,110,0.32) 0%, rgba(224,168,110,0) 66%)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(94% 62% at 42% -12%, rgba(18,10,6,0.6) 0%, rgba(18,10,6,0) 64%)",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(rgba(242,235,221,0.1) 0.7px, transparent 0.8px)",
-        backgroundSize: "4px 4px",
-      },
-      {
-        backgroundImage:
-          "radial-gradient(76% 78% at 50% 50%, rgba(14,8,4,0) 24%, rgba(14,8,4,0.54) 100%)",
-      },
-    ],
-  },
-};
+/**
+ * Duración del crossfade entre fotografías (s). Dentro del rango 0.6–1.0:
+ * lo bastante largo para leerse como la misma campaña cambiando de momento,
+ * lo bastante corto para acompañar el scrub sin quedar atrás.
+ */
+const SCENE_FADE = 0.8;
+
+/**
+ * Histéresis del cambio de fase, en unidades de `t` (una fase = 1).
+ *
+ * La fase activa cambia al cruzar el punto medio entre dos protagonistas, pero
+ * solo si se lo pasa por este margen: oscilar sobre el borde con la rueda o
+ * el trackpad no dispara crossfades de ida y vuelta.
+ */
+const PHASE_HYSTERESIS = 0.06;
 
 interface CarouselSlot {
   x: number;
@@ -336,12 +191,12 @@ function progressOfPhase(index: number): number {
  * Tramos verticales de la sección en los que la escena de fondo es oscura.
  *
  * El header flota sin fondo y solo invierte el color de su texto según
- * `data-header-tone`. Como dos de las cuatro fases son oscuras (bordo y
- * tierra), estos tramos se declaran para que la navegación siga siendo legible
- * si el usuario vuelve hacia arriba sobre El Ciclo. Se derivan de las mismas
+ * `data-header-tone`. Las fotografías oscuras (`cycleScene.tone === "dark"`)
+ * declaran su tramo para que la navegación pase a ivory si el usuario vuelve
+ * hacia arriba sobre El Ciclo; sobre las claras queda el ink por defecto. Se derivan de las mismas
  * constantes del timeline, así no se desfasan si se ajustan los tiempos.
  */
-function darkScenePercent(): Array<{ top: number; height: number }> {
+function darkScenePercent(dark: boolean[]): Array<{ top: number; height: number }> {
   const pinShare = PIN_VH / SECTION_VH;
   // Frontera perceptiva entre fases: el punto medio entre dos protagonistas.
   const edges = [0];
@@ -350,10 +205,9 @@ function darkScenePercent(): Array<{ top: number; height: number }> {
   }
   edges.push(100);
 
-  const order: CyclePhase[] = ["Menstrual", "Follicular", "Ovulatory", "Luteal"];
-  return order
-    .map((phase, index) => ({
-      dark: atmospheres[phase].darkBase,
+  return dark
+    .map((isDark, index) => ({
+      dark: isDark,
       top: edges[index],
       height: edges[index + 1] - edges[index],
     }))
@@ -379,7 +233,6 @@ export function CycleSection() {
   const bottleRefs = useRef<Array<HTMLDivElement | null>>([]);
   const copyRefs = useRef<Array<HTMLDivElement | null>>([]);
   const sceneRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const lightRefs = useRef<Array<HTMLDivElement | null>>([]);
   const railLabelRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const railHighlightRef = useRef<HTMLSpanElement>(null);
   const railTrackRef = useRef<HTMLDivElement>(null);
@@ -396,7 +249,10 @@ export function CycleSection() {
     []
   );
 
-  const darkRanges = useMemo(darkScenePercent, []);
+  const darkRanges = useMemo(
+    () => darkScenePercent(phases.map((product) => sceneOf(product).tone === "dark")),
+    [phases]
+  );
 
   /**
    * Lleva el scroll al punto del recorrido donde la fase pedida es
@@ -461,15 +317,86 @@ export function CycleSection() {
     const bottles = bottleRefs.current.filter((el): el is HTMLDivElement => el !== null);
     const copies = copyRefs.current.filter((el): el is HTMLDivElement => el !== null);
     const scenes = sceneRefs.current.filter((el): el is HTMLDivElement => el !== null);
-    const lights = lightRefs.current.filter((el): el is HTMLDivElement => el !== null);
     const railLabels = railLabelRefs.current.filter(
       (el): el is HTMLSpanElement => el !== null
     );
 
-    const phaseInk = phases.map((product) =>
-      toRgb(atmospheres[product.phase as CyclePhase].ink)
-    );
+    const phaseInk = phases.map((product) => toRgb(sceneOf(product).ink));
     const tinted = [eyebrow, heading, ...railLabels];
+
+    /*
+     * Fondo: la fotografía sigue a la FASE ACTIVA, no a cada píxel de scroll.
+     *
+     * `paint` sigue siendo continuo para frascos, copy e indicador, pero el
+     * fondo solo reacciona cuando cambia la fase activa (con histéresis). En
+     * ese momento la foto nueva sube al frente y entra con un crossfade de
+     * duración fija; recién cuando terminó, las demás pasan a 0. Así nunca
+     * hay dos fotos a medias que dejen ver la base, ni un fade que tiemble
+     * con microcambios de scroll.
+     *
+     * La tinta del titular y del indicador viaja con la foto, en el mismo
+     * tween, para que el contraste cambie junto con el fondo.
+     */
+    let activeScene = -1;
+    let sceneZ = 1;
+    const ink = { r: phaseInk[0][0], g: phaseInk[0][1], b: phaseInk[0][2] };
+
+    const applyInk = () => {
+      if (disposed) return;
+      const inkCss = `rgb(${Math.round(ink.r)},${Math.round(ink.g)},${Math.round(ink.b)})`;
+      gsap.set(tinted, { color: inkCss });
+      gsap.set([railHighlight, railTrack], { backgroundColor: inkCss });
+    };
+
+    const activateScene = (index: number, instant: boolean) => {
+      if (disposed || index === activeScene) return;
+      activeScene = index;
+
+      const incoming = scenes[index];
+      const others = scenes.filter((_, k) => k !== index);
+      const [r, g, b] = phaseInk[index];
+
+      // Lo que estuviera entrando se congela debajo: la foto nueva lo cubre.
+      gsap.killTweensOf(others);
+      sceneZ += 1;
+      gsap.set(incoming, { zIndex: sceneZ });
+
+      if (instant) {
+        gsap.set(incoming, { opacity: 1 });
+        gsap.set(others, { opacity: 0 });
+        gsap.killTweensOf(ink);
+        Object.assign(ink, { r, g, b });
+        applyInk();
+        return;
+      }
+
+      gsap.to(incoming, {
+        opacity: 1,
+        duration: SCENE_FADE,
+        ease: "power1.inOut",
+        overwrite: "auto",
+        onComplete: () => {
+          if (disposed || activeScene !== index) return;
+          gsap.set(others, { opacity: 0 });
+        },
+      });
+      gsap.to(ink, {
+        r,
+        g,
+        b,
+        duration: SCENE_FADE,
+        ease: "power1.inOut",
+        overwrite: "auto",
+        onUpdate: applyInk,
+      });
+    };
+
+    /** Fase activa a partir de `t`, con histéresis alrededor del punto medio. */
+    const resolveActive = (t: number) => {
+      const nearest = Math.max(0, Math.min(scenes.length - 1, Math.round(t)));
+      if (activeScene < 0) return nearest;
+      return Math.abs(t - activeScene) > 0.5 + PHASE_HYSTERESIS ? nearest : activeScene;
+    };
 
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
@@ -477,13 +404,13 @@ export function CycleSection() {
       /**
        * Único punto de escritura de la escena.
        *
-       * Todo —frascos, fondo, luz, copy, tinta e indicador— se deriva del
-       * mismo escalar `t` (0 = CLARITY … 3 = RESTORE). No hay keyframes ni
-       * umbrales: cualquier posición de scroll produce un estado válido, y
-       * scrollear hacia atrás es exactamente simétrico. El modo reduced motion
-       * usa la misma función con valores enteros.
+       * Frascos, copy e indicador se derivan de forma continua del mismo
+       * escalar `t` (0 = CLARITY … 3 = RESTORE): cualquier posición de scroll
+       * produce un estado válido y scrollear hacia atrás es simétrico. El
+       * fondo y la tinta resuelven la fase activa desde ese mismo `t`. El modo
+       * reduced motion usa la misma función con valores enteros e `instant`.
        */
-      const paint = (slots: ReturnType<typeof makeSlots>) => (t: number) => {
+      const paint = (slots: ReturnType<typeof makeSlots>, instant = false) => (t: number) => {
         if (disposed) return;
 
         // 1. Frascos: rotación física continua.
@@ -501,25 +428,10 @@ export function CycleSection() {
           });
         });
 
-        /*
-         * 2. Fondos: revelado acumulativo. Cada escena se monta sobre la
-         * anterior y empieza a entrar mucho antes de que su fase llegue al
-         * centro, así el color nuevo ya está presente durante la transición.
-         */
-        const sceneAlpha: number[] = [1];
-        for (let k = 1; k < scenes.length; k += 1) {
-          sceneAlpha[k] = smoothstep(k - 0.85, k - 0.05, t);
-        }
-        scenes.forEach((scene, k) => {
-          gsap.set(scene, { opacity: sceneAlpha[k] });
-        });
+        // 2. Fondo y tinta: siguen a la fase activa (ver `activateScene`).
+        activateScene(resolveActive(t), instant);
 
-        // 3. Luz de contacto: peso por fase, para que no se acumulen.
-        lights.forEach((light, k) => {
-          gsap.set(light, { opacity: Math.max(0, 1 - Math.abs(t - k)) });
-        });
-
-        // 4. Copy: relevo limpio, sin dos textos legibles a la vez.
+        // 3. Copy: relevo limpio, sin dos textos legibles a la vez.
         copies.forEach((copy, k) => {
           const d = t - k;
           gsap.set(copy, {
@@ -528,28 +440,7 @@ export function CycleSection() {
           });
         });
 
-        /*
-         * 5. Tinta compartida: se compone con los mismos pesos que los
-         * fondos, así el contraste del titular acompaña la escena en vez de
-         * cruzarla con su propio tiempo.
-         */
-        let ink: [number, number, number] = [...phaseInk[0]];
-        for (let k = 1; k < phaseInk.length; k += 1) {
-          const next = phaseInk[k];
-          const a = sceneAlpha[k];
-          ink = [
-            lerp(ink[0], next[0], a),
-            lerp(ink[1], next[1], a),
-            lerp(ink[2], next[2], a),
-          ];
-        }
-        const inkCss = `rgb(${ink.map((c) => Math.round(c)).join(",")})`;
-        gsap.set(tinted, { color: inkCss });
-        gsap.set([railHighlight, railTrack], {
-          backgroundColor: inkCss,
-        });
-
-        // 6. Indicador: deriva del mismo `t`, no puede desfasarse.
+        // 4. Indicador: deriva del mismo `t`, no puede desfasarse.
         gsap.set(railHighlight, { xPercent: 100 * t });
         railLabels.forEach((label, k) => {
           gsap.set(label, {
@@ -564,7 +455,12 @@ export function CycleSection() {
         const render = (progress: number) => renderAt(phaseAt(progress));
 
         gsap.set(bottles, { transformOrigin: "50% 100%" });
-        gsap.set(entryVeil, { autoAlpha: 0.55 });
+        /*
+         * Los velos de entrada y salida empataban con el tinte mineral del
+         * Hero y con el agua. Con el nuevo orden (Calendario → El Ciclo →
+         * Descubrí tu piel) ambos bordes son cortes limpios: quedan en 0.
+         */
+        gsap.set(entryVeil, { autoAlpha: 0 });
         gsap.set(exitVeil, { autoAlpha: 0 });
 
         render(0);
@@ -597,11 +493,11 @@ export function CycleSection() {
           { autoAlpha: 0, duration: LEAD_IN, ease: "none" },
           0
         );
-        tl.to(
-          exitVeil,
-          { autoAlpha: 0.8, duration: LEAD_OUT, ease: "none" },
-          1 - LEAD_OUT
-        );
+        /*
+         * El velo de salida oscurecía la última fase hacia la escena de agua,
+         * que ya no sigue a El Ciclo. Ahora entrega a Descubrí tu piel con un
+         * corte limpio: el velo queda en 0 (montado, por si se retoma).
+         */
 
         triggerRef.current = tl.scrollTrigger ?? null;
         return () => {
@@ -625,7 +521,8 @@ export function CycleSection() {
        * alcanzables sin depender del scroll.
        */
       mm.add("(min-width: 768px) and (prefers-reduced-motion: reduce)", () => {
-        const renderAt = paint(makeSlots([-228, -120, 148]));
+        // Cambio directo de fotografía: sin crossfade.
+        const renderAt = paint(makeSlots([-228, -120, 148]), true);
         gsap.set(bottles, { transformOrigin: "50% 100%" });
         gsap.set(entryVeil, { autoAlpha: 0 });
         gsap.set(exitVeil, { autoAlpha: 0 });
@@ -641,6 +538,10 @@ export function CycleSection() {
 
     return () => {
       disposed = true;
+      // Los crossfades se crean desde callbacks, fuera del contexto: se matan
+      // explícitamente, solo los de esta sección (nada global).
+      gsap.killTweensOf(scenes);
+      gsap.killTweensOf(ink);
       ctx.revert();
     };
   }, [phases]);
@@ -649,7 +550,8 @@ export function CycleSection() {
     <section
       id="ciclo"
       ref={sectionRef}
-      className="relative bg-[#5A2A32] md:h-[280vh] motion-reduce:md:h-auto"
+      className="relative md:h-[280vh] motion-reduce:md:h-auto"
+      style={{ backgroundColor: sceneOf(phases[0]).base }}
       aria-labelledby="cycle-heading"
     >
       {/* Tramos con escena oscura: el header invierte a texto ivory al pasar
@@ -668,57 +570,54 @@ export function CycleSection() {
         ref={stageRef}
         className="relative hidden h-screen w-full overflow-hidden md:block"
       >
-        {/* Una atmósfera completa por fase, con el color base del packaging. */}
-        {phases.map((product, index) => {
-          const phase = product.phase as CyclePhase;
-          const atmosphere = atmospheres[phase];
-          return (
-            <div
-              key={`scene-${product.slug}`}
-              ref={(el) => {
-                sceneRefs.current[index] = el;
-              }}
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 overflow-hidden"
-              style={{
-                backgroundColor: atmosphere.base,
-                opacity: index === 0 ? 1 : 0,
-              }}
-            >
-              {atmosphere.layers.map((layer, layerIndex) => (
-                <div key={layerIndex} className="absolute inset-0" style={layer} />
-              ))}
-            </div>
-          );
-        })}
+        {/*
+          Una fotografía por fase. Van dentro de su propio contexto de
+          apilado (`isolate`): el z-index con el que cada foto sube al frente
+          crece en cada cambio y no debe competir con el copy ni los frascos.
 
-        {/* Luz de contacto detrás del protagonista: cambia de posición y de
-            temperatura con la fase. */}
-        {phases.map((product, index) => {
-          const phase = product.phase as CyclePhase;
-          return (
-            <div
-              key={`light-${product.slug}`}
-              ref={(el) => {
-                lightRefs.current[index] = el;
-              }}
-              aria-hidden="true"
-              className="pointer-events-none absolute z-[6] -translate-x-1/2 -translate-y-1/2 blur-3xl"
-              style={{
-                ...atmospheres[phase].keyLightAt,
-                backgroundImage: atmospheres[phase].keyLight,
-                opacity: index === 0 ? 1 : 0,
-              }}
-            />
-          );
-        })}
+          Las cuatro se montan juntas y con `loading="lazy"`: como comparten
+          posición, el navegador las pide a la vez al acercarse la sección —
+          antes de necesitarlas, sin pesar en la carga inicial—. Mientras
+          llegan se ve `base`, el color promedio de cada foto, no un blanco.
+        */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 isolate">
+          {phases.map((product, index) => {
+            const scene = sceneOf(product);
+            return (
+              <div
+                key={`scene-${product.slug}`}
+                ref={(el) => {
+                  sceneRefs.current[index] = el;
+                }}
+                className="absolute inset-0 overflow-hidden"
+                style={{
+                  backgroundColor: scene.base,
+                  opacity: index === 0 ? 1 : 0,
+                  zIndex: index === 0 ? 1 : 0,
+                }}
+              >
+                <img
+                  src={scene.src}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  style={{ objectPosition: scene.objectPosition }}
+                />
+                {scene.textScrim && (
+                  <div className="absolute inset-0" style={{ backgroundImage: scene.textScrim }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
 
         {/* Velos de entrada y salida: continuidad con el Hero y con el bloque
             comercial. No alteran el color propio de ninguna fase. */}
         <div
           ref={entryVeilRef}
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-[4] bg-[#a4907f]"
+          className="pointer-events-none absolute inset-0 z-[4] bg-[#a4907f] opacity-0"
         />
         <div
           ref={exitVeilRef}
@@ -729,7 +628,7 @@ export function CycleSection() {
         <div className="absolute left-[5vw] top-[8vh] z-20">
           <p
             ref={eyebrowRef}
-            style={{ color: atmospheres.Menstrual.ink, opacity: INK_LABEL }}
+            style={{ color: sceneOf(phases[0]).ink, opacity: INK_LABEL }}
             className="font-sans text-[10px] uppercase tracking-[0.26em]"
           >
             El ciclo
@@ -740,7 +639,7 @@ export function CycleSection() {
           <h2
             ref={headingRef}
             id="cycle-heading"
-            style={{ color: atmospheres.Menstrual.ink }}
+            style={{ color: sceneOf(phases[0]).ink }}
             className="mb-12 font-display text-[clamp(3rem,5.6vw,6.6rem)] leading-[0.91] tracking-[-0.04em]"
           >
             Tu piel cambia.<br />Tu ritual también.
@@ -749,7 +648,7 @@ export function CycleSection() {
           <div className="relative min-h-[235px]">
             {phases.map((product, index) => {
               const phase = product.phase as CyclePhase;
-              const atmosphere = atmospheres[phase];
+              const scene = sceneOf(product);
               return (
                 <div
                   key={product.slug}
@@ -757,7 +656,7 @@ export function CycleSection() {
                     copyRefs.current[index] = el;
                   }}
                   className="absolute inset-x-0 top-0"
-                  style={{ color: atmosphere.ink, opacity: index === 0 ? 1 : 0 }}
+                  style={{ color: scene.ink, opacity: index === 0 ? 1 : 0 }}
                 >
                   <p
                     className="mb-5 font-sans text-[10px] uppercase tracking-[0.22em]"
@@ -813,13 +712,13 @@ export function CycleSection() {
               ref={railTrackRef}
               aria-hidden="true"
               className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 opacity-25"
-              style={{ backgroundColor: atmospheres.Menstrual.ink }}
+              style={{ backgroundColor: sceneOf(phases[0]).ink }}
             />
             <span
               ref={railHighlightRef}
               aria-hidden="true"
               className="absolute inset-y-0 left-0 block w-1/4"
-              style={{ backgroundColor: atmospheres.Menstrual.ink }}
+              style={{ backgroundColor: sceneOf(phases[0]).ink }}
             />
           </div>
           <div className="mt-3.5 grid grid-cols-4">
@@ -837,7 +736,7 @@ export function CycleSection() {
                   ref={(el) => {
                     railLabelRefs.current[index] = el;
                   }}
-                  style={{ color: atmospheres.Menstrual.ink }}
+                  style={{ color: sceneOf(phases[0]).ink }}
                   className="block font-sans text-[9px] uppercase tracking-[0.16em] transition-opacity duration-300 group-hover/rail:!opacity-100"
                 >
                   {phaseLabel[product.phase as CyclePhase]}
@@ -848,41 +747,44 @@ export function CycleSection() {
         </div>
       </div>
 
-      {/* Mobile: misma jerarquía conceptual, versión diseñada y estable,
-          sin pin ni carrusel. Cada fase conserva su atmósfera y su color. */}
+      {/*
+        Mobile: misma jerarquía conceptual, versión estable sin pin ni
+        carrusel. Cada fase es su propio plano con su fotografía, recortada
+        con `objectPositionMobile` para dejar el frasco sobre una zona calma.
+        La apertura queda sobre el campo claro de la Home: el primer plano
+        fotográfico es CLARITY.
+      */}
       <div className="md:hidden">
-        <div className="relative overflow-hidden bg-[#5A2A32] px-6 pb-12 pt-28">
-          <div className="pointer-events-none absolute inset-0 bg-[url('/pradera-y-caballo.jpg')] bg-cover bg-center opacity-[0.07] blur-sm" />
-          <div className="relative z-10" style={{ color: IVORY }}>
-            <p
-              className="mb-5 font-sans text-[10px] uppercase tracking-[0.22em]"
-              style={{ opacity: INK_LABEL }}
-            >
-              El ciclo
-            </p>
-            <h2 className="font-display text-[clamp(3rem,14vw,5rem)] leading-[0.93] tracking-[-0.035em]">
-              Tu piel cambia.<br />Tu ritual también.
-            </h2>
-          </div>
+        <div className="relative bg-[#F2EBDD] px-6 pb-12 pt-24 text-ink">
+          <p
+            className="mb-5 font-sans text-[10px] uppercase tracking-[0.22em]"
+            style={{ opacity: INK_LABEL }}
+          >
+            El ciclo
+          </p>
+          <h2 className="font-display text-[clamp(3rem,14vw,5rem)] leading-[0.93] tracking-[-0.035em]">
+            Tu piel cambia.<br />Tu ritual también.
+          </h2>
         </div>
         {phases.map((product) => {
           const phase = product.phase as CyclePhase;
-          const atmosphere = atmospheres[phase];
+          const scene = sceneOf(product);
           return (
             <article
               key={product.slug}
-              data-header-tone={atmosphere.darkBase ? "light" : "dark"}
+              data-header-tone={scene.tone === "dark" ? "light" : "dark"}
               className="relative min-h-[92svh] overflow-hidden px-6 py-16"
-              style={{ backgroundColor: atmosphere.base, color: atmosphere.ink }}
+              style={{ backgroundColor: scene.base, color: scene.ink }}
             >
-              {atmosphere.layers.map((layer, layerIndex) => (
-                <div
-                  key={layerIndex}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0"
-                  style={layer}
-                />
-              ))}
+              <img
+                src={scene.src}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                style={{ objectPosition: scene.objectPositionMobile }}
+              />
               <div className="relative z-10 flex min-h-[80svh] flex-col justify-between">
                 <div>
                   <p

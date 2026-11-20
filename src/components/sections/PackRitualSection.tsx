@@ -1,69 +1,67 @@
 import { Link } from "react-router-dom";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
+import { useCart } from "@/hooks/useCart";
 import { packCopy } from "@/data/content";
+import {
+  getProductBySlug,
+  isPurchasable,
+  packX4,
+  productHref,
+  serumDisplayName,
+} from "@/data/products";
+import { PriceTag } from "@/components/shop/PriceTag";
+import { brandButton } from "@/lib/brandButton";
 import { cn } from "@/lib/utils";
 
 /** Campo claro de toda la zona comercial. */
 const FIELD = "#F2EBDD";
+
 /**
- * HOME 03 — Pack x4 / Ritual completo.
+ * HOME 02 — El Ritual (id interno del producto: pack-x4).
  *
- * Primera pieza de la zona comercial: a partir de acá la Home vive en campo
- * claro y sigue así hasta el shopping de 04B, que usa exactamente el mismo
- * crema. Entre una sección y otra no hay transición ni costura.
+ * Lo primero que aparece al salir del Hero: la propuesta completa de ORMONIA,
+ * antes que los sérums sueltos. Por eso es más comercial que su versión
+ * anterior —nombre, precio cuando exista, qué incluye, CTA al PDP y agregar al
+ * carrito— pero conserva la composición aprobada: copy a la izquierda y el
+ * estuche dentro del arco a la derecha, integrado al campo claro, sin card.
  *
- * El campo arranca crema desde el primer píxel: el paso desde El Ciclo es un
- * corte directo, sin rampa cromática. Por eso tampoco hay marcador de tono —
- * el header va en ink desde el borde, que es el valor por defecto.
+ * El paso desde el Hero es un corte limpio: el campo crema arranca en el
+ * primer píxel y el header vuelve a ink por defecto, sin marcador de tono.
  *
- * Composición horizontal simple: copy comercial a la izquierda y el visual del
- * pack a la derecha dentro de una forma arqueada tipo portal. Nada de card
- * flotante, escena oscura ni póster centrado.
+ * Todo dato comercial sale de `packX4` (`data/products.ts`):
+ * - el precio aparece solo cuando existe en el catálogo;
+ * - no se comunica ahorro: el Pack es el ritual completo, no un descuento.
  *
- * El arco es una caja con `rounded-t-full`: el radio se recorta solo a la mitad
- * del ancho, de modo que el remate superior es un semicírculo exacto y los
- * flancos quedan rectos. La fotografía va a sangre adentro, sin marco ni
- * sombra.
+ * Hover (desktop, `motion-safe`): crossfade del estuche a la fotografía de
+ * campaña de los cuatro sérums sobre el cuerpo (`productionMedia.ritual`).
+ * El cursor global pasa a ivory sobre el arco.
  *
- * En desktop la base es cuadrada —semicírculo arriba, flancos rectos abajo—
- * porque los assets del estuche son apaisados (1200×896): una base más
- * estrecha recortaría la caja por los extremos. Con esta proporción se
- * conserva el 75% del ancho original y el recorte cae sobre fondo vacío.
- *
- * El alto del arco lo gobierna el viewport, así toda la sección entra en una
- * pantalla de desktop sin scroll interno.
- *
- * Hover (desktop, con `motion-safe`): crossfade de la imagen por defecto a la
- * de hover. Sin zoom ni tilt. Si `packCopy.media.hover` es `null`, el visual
- * queda estable y no se monta ninguna transición. El cursor circular global
- * pasa a su variante ivory sobre el arco, vía `data-cursor-tone`.
- *
- * `#pack-x4` es el ancla del CTA del hero.
- *
- * Preparado para Sprint 04+: precio, ahorro frente a comprar los cuatro por
- * separado, assets definitivos de la caja y PDP de Shopify. Sin lógica de
- * compra y sin porcentajes hasta que el pricing los confirme.
+ * `#el-ritual` es el ancla del CTA del Hero (`#pack-x4` redirige vía alias).
  */
 export function PackRitualSection() {
   const revealRef = useScrollReveal<HTMLDivElement>();
+  const { add } = useCart();
 
-  const { media } = packCopy;
-  const hoverMedia = media.hover ?? media.primary;
-  const hasHoverImage = media.hover !== null;
+  const pack = packX4;
+  const href = productHref(pack);
+  const included = (pack.includes ?? [])
+    .map((slug) => getProductBySlug(slug))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+  const hasHoverImage = Boolean(pack.hoverImageSrc);
 
   return (
     <section
-      id="pack-x4"
+      id="el-ritual"
       aria-labelledby="pack-heading"
       className="relative scroll-mt-24 overflow-hidden"
       style={{ backgroundColor: FIELD }}
     >
       <div
         ref={revealRef}
-        className="relative mx-auto grid w-full max-w-[1320px] items-center gap-14 px-6 pb-[clamp(72px,10vh,120px)] pt-[clamp(96px,12vh,140px)] md:px-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-16"
+        className="relative mx-auto grid w-full max-w-[1320px] items-center gap-12 px-6 pb-[clamp(64px,9vh,112px)] pt-[clamp(80px,11vh,128px)] md:px-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-16"
       >
         {/* Copy comercial. */}
-        <div className="text-ink">
+        <div className="order-2 text-ink lg:order-1">
           <p className="font-sans text-[10px] uppercase tracking-[0.28em] text-ink/68 md:text-[11px]">
             {packCopy.eyebrow}
           </p>
@@ -77,47 +75,75 @@ export function PackRitualSection() {
             <em className="not-italic lg:italic">{packCopy.titleLines[1]}</em>
           </h2>
 
-          <p className="mt-6 max-w-[380px] font-sans text-[13px] leading-relaxed text-ink/64 md:mt-7 md:text-[14px]">
+          <p className="mt-6 max-w-[400px] font-sans text-[13px] leading-relaxed text-ink/64 md:mt-7 md:text-[14px]">
             {packCopy.body}
           </p>
 
-          {/* Precio y ahorro: aparecen recién cuando existan definitivos. */}
-          {packCopy.price && (
-            <div className="mt-7 flex items-baseline gap-4">
-              <span className="font-display text-2xl tracking-[-0.02em]">
-                {packCopy.price}
-              </span>
-              {packCopy.savings && (
-                <span className="font-sans text-[10px] uppercase tracking-[0.18em] text-ink/60">
-                  {packCopy.savings}
-                </span>
-              )}
-            </div>
+          {/* Qué incluye: cada sérum lleva a su ficha. */}
+          <div className="mt-7 flex flex-wrap items-baseline gap-x-3 gap-y-2 border-t border-ink/14 pt-5">
+            <span className="font-sans text-[10px] uppercase tracking-[0.24em] text-ink/62">
+              {packCopy.includesLabel}
+            </span>
+            <ul className="flex flex-wrap gap-x-3 gap-y-1">
+              {included.map((item, index) => (
+                <li key={item.slug} className="font-editorial text-[1.25rem] leading-none md:text-[1.35rem]">
+                  <Link
+                    to={productHref(item)}
+                    className="text-ink underline-offset-4 transition-colors hover:underline"
+                  >
+                    {serumDisplayName(item)}
+                  </Link>
+                  {index < included.length - 1 && (
+                    <span aria-hidden="true" className="ml-3 text-ink/35">
+                      ·
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {pack.price != null && (
+            <PriceTag
+              product={pack}
+              className="mt-6 block font-sans text-[1.7rem] tracking-[-0.01em]"
+            />
           )}
 
-          {/*
-            Mismo lenguaje que el CTA del hero: marco fino, transparente,
-            esquinas moderadas, sin ícono. Navega a la ruta de productos
-            existente hasta que exista el PDP del pack.
-          */}
-          <Link
-            to={packCopy.ctaHref}
-            data-cursor-expand
-            className="mt-9 inline-flex h-[48px] w-fit items-center justify-center rounded-[12px] border border-ink/45 bg-transparent px-7 font-sans text-[11px] uppercase tracking-[0.18em] text-ink transition-[background-color,border-color,color] duration-500 ease-out hover:border-ink hover:bg-ink hover:text-ivory md:h-[52px] md:px-9 md:text-[12px] lg:mt-10"
-          >
-            {packCopy.cta}
-          </Link>
+          <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4 lg:mt-9">
+            <Link
+              to={href}
+              data-cursor-expand
+              className={brandButton({ size: "lg" })}
+            >
+              {packCopy.cta}
+            </Link>
+            {isPurchasable(pack) && (
+              <button
+                type="button"
+                onClick={() => add(pack, 1)}
+                className={brandButton({ variant: "quiet" })}
+              >
+                {packCopy.addToCart}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Visual del pack dentro del arco. */}
-        <div
+        {/* Visual del pack dentro del arco: también lleva al PDP. */}
+        <Link
+          to={href}
+          tabIndex={-1}
+          aria-hidden="true"
           data-cursor-tone="light"
-          className="group relative mx-auto aspect-[5/6] w-full max-w-[460px] overflow-hidden rounded-t-full lg:aspect-square lg:h-[clamp(420px,66vh,680px)] lg:w-auto lg:max-w-none"
+          data-cursor-expand
+          className="group relative order-1 mx-auto block aspect-[5/6] w-full max-w-[460px] overflow-hidden rounded-t-full lg:order-2 lg:aspect-square lg:h-auto lg:max-h-[min(66vh,680px)] lg:w-full lg:max-w-[min(66vh,680px)]"
         >
           <img
-            src={media.primary.src}
-            alt={media.primary.alt}
+            src={pack.imageSrc}
+            alt=""
             loading="lazy"
+            decoding="async"
             className={cn(
               "absolute inset-0 h-full w-full object-cover object-center",
               hasHoverImage &&
@@ -126,14 +152,15 @@ export function PackRitualSection() {
           />
           {hasHoverImage && (
             <img
-              src={hoverMedia.src}
+              src={pack.hoverImageSrc}
               alt=""
-              aria-hidden="true"
               loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover object-center opacity-0 motion-safe:transition-opacity motion-safe:duration-650 motion-safe:ease-out motion-safe:group-hover:opacity-100"
+              decoding="async"
+              style={{ objectPosition: pack.hoverObjectPosition ?? "center" }}
+              className="absolute inset-0 h-full w-full object-cover opacity-0 motion-safe:transition-opacity motion-safe:duration-650 motion-safe:ease-out motion-safe:group-hover:opacity-100"
             />
           )}
-        </div>
+        </Link>
       </div>
     </section>
   );

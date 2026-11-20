@@ -5,10 +5,30 @@
   <meta charset="UTF-8" />
   <link href="/favicon.ico" rel="icon shortcut">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    Tipografías (src/index.css):
+    - Fraunces (Google Fonts): serif de titulares editoriales, como antes.
+    - ALT Systema (public/fonts): sans funcional. Se precarga el Semibold
+      porque lo pinta el primer viewport (franja de envío, navegación, CTA).
+    - Cardone y Yorick (public/fonts): acentos puntuales; cargan al usarse.
+    El wordmark ORMONIA no es una fuente: es el logotipo vectorial
+    (src/components/brand/Wordmark.tsx).
+    ⚠️ Cardone y Yorick son TRIAL: reemplazar por webfonts licenciados antes
+    del deploy comercial.
+  -->
+  <link rel="preload" href="/fonts/ALTSystema-Semibold.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Inter:wght@400;500;600&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&display=swap"
+    rel="stylesheet">
+  <!--
+    TEMPORAL · Cardone Trial no trae á í ó ú ñ ¿ ¡ $ / # · ni algunas
+    comillas. Se pide a Google Fonts SOLO ese puñado de glyphs de Newsreader
+    Light Italic (parámetro `text`). Borrar al instalar Cardone licenciada.
+  -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,300&text=%C3%A1%C3%AD%C3%B3%C3%BA%C3%81%C3%8D%C3%93%C3%9A%C3%B1%C3%91%C3%BC%C3%9C%C2%BF%C2%A1%24%2F%23%C2%B7%E2%80%9C%E2%80%9D%E2%80%98%27&display=swap"
     rel="stylesheet">
   <title>ORMONIA — Lo que cambia adentro se expresa afuera.</title>
   <meta name="description"

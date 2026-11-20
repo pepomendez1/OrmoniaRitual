@@ -1,8 +1,8 @@
 import { type ReactNode } from "react";
-import { Play } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import { SiteLink } from "@/components/ui/SiteLink";
-import { learnCopy, type Reading } from "@/data/content";
+import { learnCopy, readingHref, type Reading } from "@/data/content";
 import { cn } from "@/lib/utils";
 
 /** Mismo campo claro que la zona comercial: la Home sigue en su universo ivory. */
@@ -16,15 +16,14 @@ const FIELD = "#F2EBDD";
  * destacada y un índice con filetes—, más cerca de una revista que de una
  * grilla de blog o de otra zona de compra.
  *
- * Todo sale de `learnCopy.readings`. Una pieza sin `href` se presenta como
- * "Próximamente" y no enlaza; una sin `media` muestra un campo tonal con su
- * nota de producción, igual que el resto de los placeholders del sitio.
+ * Todo sale de `learnCopy.readings`. Toda pieza es clickeable: con `href`
+ * real va a la nota o al video; sin él abre su ficha en `/explore/:id`, que
+ * muestra la pieza y dice que todavía no está publicada (sin inventar el
+ * texto). Una sin `media` muestra un campo tonal con su nota de producción.
  */
 export function LearnSection() {
   const ref = useScrollReveal<HTMLDivElement>();
   const [featured, ...rest] = learnCopy.readings;
-  // El índice completo (/learn) solo suma algo cuando hay piezas publicadas.
-  const hasPublished = learnCopy.readings.some((reading) => reading.href);
 
   return (
     <section
@@ -54,14 +53,12 @@ export function LearnSection() {
           </div>
         )}
 
-        {hasPublished && (
-          <SiteLink
-            href={learnCopy.ctaHref}
-            className="mt-12 inline-flex border-b border-ink/45 pb-1.5 font-sans text-[11px] uppercase tracking-[0.2em] text-ink transition-colors duration-300 hover:border-ink md:mt-14"
-          >
-            {learnCopy.cta}
-          </SiteLink>
-        )}
+        <SiteLink
+          href={learnCopy.ctaHref}
+          className="mt-12 inline-flex border-b border-ink/45 pb-1.5 font-sans text-[11px] uppercase tracking-[0.2em] text-ink transition-colors duration-300 hover:border-ink md:mt-14"
+        >
+          {learnCopy.cta}
+        </SiteLink>
       </div>
     </section>
   );
@@ -129,6 +126,7 @@ function ReadingMedia({
           src={reading.media.src}
           alt={reading.media.alt}
           loading="lazy"
+          style={{ objectPosition: reading.media.objectPosition ?? "center" }}
           className="absolute inset-0 h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-900 motion-safe:ease-out motion-safe:group-hover:scale-[1.03]"
         />
       ) : (
@@ -159,7 +157,10 @@ function ReadingMedia({
   );
 }
 
-/** Envuelve la pieza en un link solo si está publicada. */
+/**
+ * Envuelve la pieza en su link: la nota/video si está publicada, o su ficha
+ * en /explore si todavía no. El foco visible y el hover viven en el link.
+ */
 function ReadingFrame({
   reading,
   className,
@@ -169,15 +170,30 @@ function ReadingFrame({
   className?: string;
   children: ReactNode;
 }) {
-  if (!reading.href) {
-    return <article className={className}>{children}</article>;
-  }
   return (
     <article>
-      <SiteLink href={reading.href} className={cn("group block", className)}>
+      <SiteLink
+        href={readingHref(reading)}
+        className={cn("group block rounded-[20px] focus-visible:outline-none", className)}
+      >
         {children}
       </SiteLink>
     </article>
+  );
+}
+
+/** Señal explícita de que la pieza se abre: no depende solo del hover. */
+function ReadMore({ reading }: { reading: Reading }) {
+  return (
+    <span className="mt-5 inline-flex items-center gap-2 font-sans text-[11px] uppercase tracking-[0.2em] text-ink">
+      <span className="border-b border-ink/40 pb-1 transition-colors duration-300 group-hover:border-ink">
+        {reading.kind === "video" ? "Ver" : "Leer"}
+      </span>
+      <ArrowRight
+        aria-hidden="true"
+        className="h-3.5 w-3.5 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:translate-x-1"
+      />
+    </span>
   );
 }
 
@@ -206,6 +222,7 @@ export function FeaturedReading({
         <p className="mt-3 max-w-[460px] font-sans text-[13px] leading-relaxed text-ink/64 md:text-[14px]">
           {reading.teaser}
         </p>
+        <ReadMore reading={reading} />
       </div>
     </ReadingFrame>
   );
@@ -221,7 +238,7 @@ export function IndexReading({
   return (
     <ReadingFrame
       reading={reading}
-      className="grid grid-cols-[minmax(0,1fr)_112px] items-start gap-5 py-7 text-ink sm:grid-cols-[minmax(0,1fr)_168px] sm:gap-8 md:py-8"
+      className="grid grid-cols-[minmax(0,1fr)_112px] items-start gap-5 py-7 text-ink transition-colors duration-300 hover:bg-ink/[0.025] sm:grid-cols-[minmax(0,1fr)_168px] sm:gap-8 md:py-8"
     >
       <div>
         <ReadingMeta reading={reading} />

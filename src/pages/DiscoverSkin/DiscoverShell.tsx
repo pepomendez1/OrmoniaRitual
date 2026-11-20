@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { skinQuizCopy } from "@/data/skinQuiz";
 import type { VisualGroup } from "@/lib/skinQuiz";
 import { DiscoverVisual } from "./DiscoverVisual";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 interface DiscoverShellProps {
   visualGroup: VisualGroup;
@@ -53,9 +54,10 @@ export function DiscoverShell({
         <div className="flex items-center justify-between px-6 py-5 md:px-10">
           <Link
             to="/"
-            className="font-display text-[17px] uppercase leading-none tracking-[0.2em] text-ink md:text-[19px]"
+            aria-label="ORMONIA — Inicio"
+            className="text-ink"
           >
-            {skinQuizCopy.brand}
+            <Wordmark title="" className="h-[14px] md:h-[16px]" />
           </Link>
 
           <div className="flex items-center gap-6">

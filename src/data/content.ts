@@ -1,3 +1,5 @@
+import { productionMedia } from "./productionMedia";
+
 /**
  * Bloques de copy reutilizables del sitio ORMONIA.
  * Centralizados aquí para editarlos en un solo lugar en vez de dispersos.
@@ -21,25 +23,25 @@ export const nav = {
   left: [
     { label: "Tienda", href: "/products" },
     { label: "Sobre Ormonia", href: "/about" },
-    { label: "Explorar", href: "/learn" },
+    { label: "Explorar", href: "/explore" },
   ],
   /**
-   * Zona derecha del header. Todavía no existe cuenta, buscador ni carrito:
-   * se muestran como afordancias inertes hasta que Shopify esté integrado.
-   * No inventar rutas ni comportamiento de compra antes de ese sprint.
+   * Zona derecha del header. Ya funcionan sobre la capa de comercio local:
+   * CUENTA navega a /account, BUSCAR abre el buscador y CARRITO el mini
+   * carrito con la cantidad real. Ver `Header.tsx`.
    */
-  utilities: [
-    { label: "Cuenta", href: null as string | null },
-    { label: "Buscar", href: null as string | null },
-    { label: "Carrito", href: null as string | null },
-  ],
+  utilities: {
+    account: { label: "Cuenta", href: "/account" },
+    search: { label: "Buscar" },
+    cart: { label: "Carrito" },
+  },
+  /** Menú mobile: todo lo navegable, en una sola columna. */
   primary: [
     { label: "Tienda", href: "/products" },
     { label: "Sobre Ormonia", href: "/about" },
-    { label: "Explorar", href: "/learn" },
-    { label: "Descubrí tu piel", href: "/descubri-tu-piel" },
-    // Placeholder: futuro punto de entrada al carrito/ritual (se conectará en un sprint posterior).
-    { label: "Tu ritual", href: null as string | null },
+    { label: "Explorar", href: "/explore" },
+    { label: "Calendario", href: "/calendario" },
+    { label: "Test de perfil de piel", href: "/descubri-tu-piel" },
   ],
 };
 
@@ -47,27 +49,26 @@ export const heroCopy = {
   line1: "Lo que cambia adentro",
   line2: "se expresa afuera.",
   cta: "Descubrir el ritual",
-  /** Ancla interna del bloque Pack x4. Mientras no exista PDP/Shopify. */
-  ctaTarget: "#pack-x4",
+  /** Ancla de El Ritual, la sección que sigue al Hero. */
+  ctaTarget: "#el-ritual",
 };
 
 /**
  * Popup diferido de descubrimiento.
  *
- * Invita al diagnóstico real (`/descubri-tu-piel`). "Fenotipo" aparece solo
- * como microcopy secundario (eyebrow) y no se define: el modelo de fenotipos
- * todavía no existe (Sprint 07B). El cuerpo reutiliza la bajada aprobada de
- * la entrada en Home, sin atar la piel al ciclo.
+ * Invita al Test de perfil de piel (`/descubri-tu-piel`). Usa el mismo
+ * naming y la misma bajada que el bloque de Home, sin atar la piel al ciclo
+ * ni definir perfiles que todavía no existen (Sprint 07B).
  *
  * `incentive`: el 5% está aprobado en el Master Plan pero todavía no hay
  * mecanismo para aplicarlo (Shopify). Se mantiene el texto existente.
  */
 export const discoverPopupCopy = {
-  eyebrow: "Fenotipo de piel",
-  title: "Descubrí tu piel",
-  body: "Un recorrido breve para entender cómo se comporta tu piel y qué necesita hoy.",
+  eyebrow: "Test de perfil de piel",
+  title: "Conocé cómo responde tu piel.",
+  body: "Un recorrido breve para reconocer su comportamiento y lo que necesita hoy.",
   incentive: "5% off en tu primer ritual",
-  cta: "Descubrir mi piel",
+  cta: "Hacer el test",
   ctaHref: "/descubri-tu-piel",
   dismiss: "Ahora no",
   close: "Cerrar",
@@ -136,49 +137,43 @@ export const fourPhasesCopy = {
 };
 
 /**
- * HOME 03 — Pack x4 / Ritual completo.
+ * HOME 02 — El Ritual (id interno del producto: pack-x4).
  *
- * Momento comercial central: comprar los cuatro serums juntos es la forma de
- * vivir el ciclo completo. `price` y `savings` quedan preparados para cuando
- * existan precios definitivos y se pueda comunicar la ventaja frente a
- * comprarlos por separado; mientras son `null`, esos bloques no se renderizan.
+ * Primera pieza después del Hero: la propuesta completa de ORMONIA antes que
+ * los productos sueltos. Nombre, precio, disponibilidad e imágenes salen del
+ * producto (`packX4` en `data/products.ts`); acá vive solo el copy editorial.
  *
- * `ctaHref` resuelve provisionalmente en la ruta de productos existente. Cuando
- * exista el PDP del pack en Shopify, se cambia solo esta línea.
- *
- * El bloque no vuelve a nombrar los cuatro serums: el usuario acaba de verlos
- * en El Ciclo. Acá el mensaje es el ritual completo, no cada fórmula.
+ * Sin narrativa de ahorro: el Pack es el ritual completo, no un descuento
+ * (decisión de marca, 2026-10-29). El precio sale de `packX4.price`.
  */
 export const packCopy = {
-  eyebrow: "Pack x4 · Ritual completo",
+  eyebrow: "El Ritual",
   titleLines: ["Las 4 fases,", "un solo ritual."],
-  /**
-   * Provisional. Cuando el pricing definitivo confirme el número, esta línea
-   * pasa a comunicar el ahorro concreto ("Ahorrá X% con el ritual completo").
-   * No inventar el porcentaje antes de esa confirmación.
-   */
-  body: "Una forma simple de recorrer el ritual completo y ahorrar eligiendo el set.",
-  cta: "Descubrir el ritual completo",
-  ctaHref: "/products",
-  price: null as string | null,
-  savings: null as string | null,
+  body: "Los cuatro sérums del ritual ORMONIA, reunidos en un solo estuche. Una forma simple de recorrer el ritual completo.",
+  includesLabel: "Incluye",
+  cta: "Descubrir el ritual",
+  addToCart: "Agregar al carrito",
+};
+
+/**
+ * HOME 04 — Calendario cíclico (teaser).
+ *
+ * Presenta el calendario como producto real del ritual, no como artículo ni
+ * newsletter. Copy breve y PROVISIONAL (a validar): describe una herramienta
+ * de observación y registro. Nunca predecir, diagnosticar ni regular.
+ */
+export const calendarTeaserCopy = {
+  eyebrow: "Herramientas del ritual",
+  title: "Calendario cíclico.",
+  body: "Un objeto para observar y registrar cómo cambia tu piel a lo largo del mes. Sin predicciones: solo lo que ves, en tus propios términos.",
+  cta: "Conocer el calendario",
+  ctaHref: "/calendario",
+  secondary: "Ver producto",
+  /** TEMPORAL · mockup: portada y páginas interiores. `null` usa la foto de producto. */
   media: {
-    /**
-     * Assets provisionales del estuche del Pack x4 (1200×896).
-     *
-     * `pack-box-dark.jpg` —la caja negra vista desde arriba— queda disponible
-     * como tercera imagen futura. No hay galería todavía.
-     */
-    primary: {
-      src: "/products/pack-box-open.jpg",
-      alt: "Estuche abierto del Pack x4 de Ormonia con los serums en su interior.",
-    },
-    /** En `null` la pieza usa una sola imagen estable, sin crossfade. */
-    hover: {
-      src: "/products/pack-box-hand.jpg",
-      alt: "",
-    } as { src: string; alt: string } | null,
-  },
+    src: "/production-temp/calendar/calendario-paginas.jpg",
+    alt: "Portada y páginas interiores del Calendario cíclico ORMONIA.",
+  } as { src: string; alt: string } | null,
 };
 
 export const insideOutsideCopy = {
@@ -198,7 +193,7 @@ export const discoverCopy = {
 };
 
 /**
- * HOME 06 — Descubrí tu piel.
+ * HOME 06 — Test de perfil de piel (después de El Ciclo).
  *
  * Entrada al diagnóstico. No explica el cuestionario: invita. La curiosidad
  * hace el trabajo y el test explica después.
@@ -221,25 +216,31 @@ export const discoverCopy = {
  * ────────────────────────────────────────────────────────────────────────
  */
 export const discoverSkinCopy = {
-  eyebrow: "Descubrí tu piel",
-  titleLines: ["Tu piel tiene una forma", "propia de responder."],
-  body: "Un recorrido breve para entender cómo se comporta y qué necesita hoy.",
-  cta: "Descubrir mi piel",
+  eyebrow: "Test de perfil de piel",
+  titleLines: ["Conocé cómo responde", "tu piel."],
+  body: "Un recorrido breve para reconocer su comportamiento y lo que necesita hoy.",
+  cta: "Hacer el test",
   ctaHref: "/descubri-tu-piel",
   media: {
-    /** `null` mientras no exista la fotografía de producción. */
-    src: null as string | null,
-    alt: "",
+    /**
+     * Producción real: rostro en primer plano (`productionMedia.skinProfile`).
+     * Piel, observación y perfil, no naturaleza genérica.
+     */
+    src: productionMedia.skinProfile.home.src as string | null,
+    alt: productionMedia.skinProfile.home.alt,
     /**
      * Gobierna el contraste de toda la pieza: "light" deja el copy en ink y el
      * header en su tinta por defecto; "dark" lo pasa todo a ivory y declara el
      * tono claro para la navegación.
      */
-    tone: "light" as "light" | "dark",
+    tone: "dark" as "light" | "dark",
     /** Campo tonal mientras no haya imagen. */
-    placeholderTone: "#D4C4AE",
-    objectPosition: "62% 50%",
-    objectPositionMobile: "58% 45%",
+    placeholderTone: "#8A7564",
+    objectPosition: productionMedia.skinProfile.home.objectPosition,
+    objectPositionMobile: productionMedia.skinProfile.home.objectPositionMobile,
+    /** Velo localizado del lado del copy (reemplaza al genérico del tono). */
+    scrim: productionMedia.skinProfile.home.scrim as string | null,
+    scrimMobile: productionMedia.skinProfile.home.scrimMobile as string | null,
     pending: "Producción · fotografía editorial de piel",
   },
 };
@@ -247,7 +248,7 @@ export const discoverSkinCopy = {
 /**
  * HOME 07 — Lecturas para el ritual.
  *
- * Bloque editorial: cambia el ritmo después de la campaña de Descubrí tu piel.
+ * Bloque editorial: cambia el ritmo después de la campaña del Test de perfil de piel.
  * No es otra zona de compra ni una grilla de blog.
  *
  * Cada pieza declara su formato (`kind`): un video de YouTube, una nota o un
@@ -269,7 +270,7 @@ export interface Reading {
   teaser: string;
   href: string | null;
   /** Imagen de portada. `null` mientras no exista la pieza de producción. */
-  media: { src: string; alt: string } | null;
+  media: { src: string; alt: string; objectPosition?: string } | null;
   /** Duración ("12 min") o tiempo de lectura, si se conoce. */
   meta?: string | null;
 }
@@ -279,7 +280,7 @@ export const learnCopy = {
   title: "Lecturas para el ritual.",
   body: "Botánica, ciclo y cuidado. Material editorial para acompañar tu práctica.",
   cta: "Ver todas las lecturas",
-  ctaHref: "/learn",
+  ctaHref: "/explore",
   soon: "Próximamente",
   kindLabel: {
     video: "Video",
@@ -296,7 +297,12 @@ export const learnCopy = {
       teaser:
         "Por qué tu piel pide cosas distintas en cada fase y cómo leer esas señales.",
       href: null,
-      media: null,
+      // Producción real: naturaleza y textura, no skincare literal.
+      media: {
+        src: productionMedia.readings.featured.src,
+        alt: productionMedia.readings.featured.alt,
+        objectPosition: productionMedia.readings.featured.objectPosition,
+      },
     },
     {
       id: "botanica-de-los-serums",
@@ -306,7 +312,12 @@ export const learnCopy = {
       teaser:
         "Los activos de cada fórmula, su origen y su función en el gesto del ritual.",
       href: null,
-      media: null,
+      // Producción real: naturaleza y textura, no skincare literal.
+      media: {
+        src: productionMedia.readings.second.src,
+        alt: productionMedia.readings.second.alt,
+        objectPosition: productionMedia.readings.second.objectPosition,
+      },
     },
     {
       id: "ritual-paso-a-paso",
@@ -316,13 +327,31 @@ export const learnCopy = {
       teaser:
         "Cómo aplicar, en qué orden y cuándo. Una guía sencilla para sostener la práctica.",
       href: null,
-      media: null,
+      // Producción real: naturaleza y textura, no skincare literal.
+      media: {
+        src: productionMedia.readings.third.src,
+        alt: productionMedia.readings.third.alt,
+        objectPosition: productionMedia.readings.third.objectPosition,
+      },
     },
   ] as Reading[],
 };
 
 /**
- * El Registro — newsletter. Vive dentro de la escena de agua (HOME 05).
+ * Destino de una lectura. Con `href` real (nota publicada, video de YouTube)
+ * va ahí; sin él abre su ficha en `/explore/:id`, que muestra la pieza y dice
+ * con honestidad que todavía no está publicada.
+ */
+export function readingHref(reading: Reading): string {
+  return reading.href ?? `/explore/${reading.id}`;
+}
+
+/**
+ * El Registro — newsletter.
+ *
+ * Ya no es una sección de Home: la escena de agua (`RhythmSection`) quedó
+ * desmontada. Sobrevive como módulo secundario dentro del cierre "Unite al
+ * ritual" (`NewsletterForm`), sin bloque propio.
  *
  * Copy deliberadamente corto: la interfaz necesita respirar. Sin cadencias,
  * frecuencias ni promesas editoriales de más.
@@ -363,7 +392,9 @@ export interface InstagramPost {
   id: string;
   image: string;
   alt: string;
-  permalink: string;
+  /** `null` mientras no exista la publicación real: no se inventan enlaces. */
+  permalink: string | null;
+  objectPosition?: string;
 }
 
 export const instagramCopy = {
@@ -375,22 +406,34 @@ export const instagramCopy = {
   profileUrl: null as string | null,
   follow: "Seguir en Instagram",
   pending: "Producción · contenido de Instagram",
-  posts: [] as InstagramPost[],
+  /*
+   * Producción real de campaña. Son fotografías, no publicaciones: van sin
+   * caption y sin permalink, así la pieza no enlaza a ningún lado. Cuando se
+   * conecte el feed, `lib/instagram.ts` devuelve los posts con su permalink.
+   */
+  posts: productionMedia.instagram.map((image) => ({
+    id: image.id,
+    image: image.src,
+    alt: image.alt,
+    permalink: null,
+    objectPosition: image.objectPosition,
+  })) as InstagramPost[],
 };
 
 /**
  * HOME 09 — Cierre "Unite al ritual".
  *
- * Cierre emocional (Master Plan §5). No repite la newsletter: El Registro ya
- * vive en la escena de agua, así que acá solo se lo señala.
+ * Cierre emocional (Master Plan §5). Al salir la escena de agua de Home, El
+ * Registro vive acá como formulario compacto y secundario —no un bloque de
+ * newsletter—, debajo de las dos salidas principales.
  */
 export const closingCopy = {
   eyebrow: "ORMONIA",
   title: "Unite al ritual.",
   body: "Lo que cambia adentro se expresa afuera.",
   links: [
-    { label: "Descubrir mi piel", href: "/descubri-tu-piel" },
-    { label: "Recibir El Registro", href: "/#ritmo" },
+    { label: "Hacer el test", href: "/descubri-tu-piel" },
+    { label: "Ir a la tienda", href: "/products" },
   ],
 };
 
@@ -413,8 +456,9 @@ export const footerCopy = {
     {
       heading: "Tienda",
       links: [
-        { label: "Los esenciales", href: "/products" },
-        { label: "Pack x4", href: "/#pack-x4" },
+        { label: "Toda la tienda", href: "/products" },
+        { label: "El Ritual", href: "/products/el-ritual" },
+        { label: "Calendario cíclico", href: "/products/calendario-ciclico" },
         { label: "CLARITY", href: "/products/clarity" },
         { label: "BLOOM", href: "/products/bloom" },
         { label: "RADIANCE", href: "/products/radiance" },
@@ -422,28 +466,30 @@ export const footerCopy = {
       ] as FooterLink[],
     },
     {
-      heading: "Explorar",
+      heading: "ORMONIA",
       links: [
         { label: "Sobre ORMONIA", href: "/about" },
-        { label: "Lecturas para el ritual", href: "/learn" },
-        { label: "Descubrí tu piel", href: "/descubri-tu-piel" },
-        { label: "El Registro", href: "/#ritmo" },
+        { label: "Explorar", href: "/explore" },
+        { label: "Calendario", href: "/calendario" },
+        { label: "Test de perfil de piel", href: "/descubri-tu-piel" },
+        { label: "Cuenta", href: "/account" },
+        { label: "Carrito", href: "/cart" },
       ] as FooterLink[],
     },
     {
       heading: "Ayuda",
       links: [
-        { label: "Envíos", href: null },
-        { label: "Cambios y devoluciones", href: null },
-        { label: "Preguntas frecuentes", href: null },
-        { label: "Contacto", href: null },
+        { label: "Envíos", href: "/ayuda/envios" },
+        { label: "Cambios y devoluciones", href: "/ayuda/cambios-y-devoluciones" },
+        { label: "Preguntas frecuentes", href: "/ayuda/preguntas-frecuentes" },
+        { label: "Contacto", href: "/ayuda/contacto" },
       ] as FooterLink[],
     },
   ],
   social: [{ label: "Instagram", href: instagramCopy.profileUrl }] as FooterLink[],
   legal: [
-    { label: "Términos y condiciones", href: null },
-    { label: "Política de privacidad", href: null },
+    { label: "Términos y condiciones", href: "/ayuda/terminos" },
+    { label: "Política de privacidad", href: "/ayuda/privacidad" },
   ] as FooterLink[],
   copyright: "ORMONIA",
 };
@@ -462,9 +508,9 @@ export const pageShells = {
     body: "Fórmulas pensadas para acompañar lo que tu piel necesita. AURA, la niebla de cierre, llegará pronto.",
   },
   learn: {
-    eyebrow: "Aprender",
+    eyebrow: "Explorar",
     title: "Lecturas para el ritual.",
-    body: "Pronto: ensayos, glosas y guías prácticas sobre botánica, ciclo y cuidado.",
+    body: "Botánica, ciclo y cuidado. Material editorial para acompañar tu práctica.",
   },
   discover: {
     eyebrow: "Descubrí",

@@ -2,42 +2,43 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { DiscoverPopup } from "@/components/layout/DiscoverPopup";
 import { HeroLandscape } from "@/components/sections/HeroLandscape";
-import { CycleSection } from "@/components/sections/CycleSection";
 import { PackRitualSection } from "@/components/sections/PackRitualSection";
 import { FourPhasesSection } from "@/components/sections/FourPhasesSection";
-import { RhythmSection } from "@/components/sections/RhythmSection";
+import { CalendarSection } from "@/components/sections/CalendarSection";
+import { CycleSection } from "@/components/sections/CycleSection";
 import { DiscoverYourSkinSection } from "@/components/sections/DiscoverYourSkinSection";
 import { LearnSection } from "@/components/sections/LearnSection";
 import { InstagramUniverseSection } from "@/components/sections/InstagramUniverseSection";
 import { ClosingSection } from "@/components/sections/ClosingSection";
 import { useHashScroll } from "@/hooks/useHashScroll";
-import { usePageTitle } from "@/hooks/usePageTitle";
+import { usePageMeta } from "@/hooks/usePageMeta";
 
 /**
- * Orden de la Home tras el Integration Pass 01–03.
+ * Home — arquitectura de la pasada integral (2026-10-29).
  *
- * El agua (Sprint 02) deja de interrumpir el inicio: ahora se llega rápido al
- * producto — Hero → El Ciclo → Pack x4 → productos individuales — y la
- * experiencia sensorial llega después de la zona comercial como pausa, con El
- * Registro fusionado dentro de la misma escena (HOME 05).
+ *   1. Hero
+ *   2. El Ritual              → la propuesta completa, apenas se sale del Hero
+ *   3. Los esenciales         → los sérums como productos individuales
+ *   4. Calendario cíclico     → la herramienta del ritual, como producto
+ *   5. El Ciclo               → storytelling/educación, después de mostrar qué se vende
+ *   6. Descubrí tu piel       → campaña hacia el diagnóstico
+ *   7. Lecturas para el ritual
+ *   8. El universo ORMONIA    → Instagram
+ *   9. Unite al ritual + footer (El Registro como módulo secundario)
  *
- * `RegisterSection` ya no se monta: su newsletter vive ahora dentro de
- * `RhythmSection`. El componente se conserva en el repo por si se necesita un
- * bloque de registro autónomo en otra página.
+ * DESMONTADO (no borrado):
+ * - `RhythmSection` (Agua + El Registro): deja de interrumpir la narrativa.
+ *   Su lugar estratégico lo toma el Calendario, no otra newsletter. El código,
+ *   el video y su motion siguen en el repo para reutilizarse.
+ * - `InsideOutsideSection`, `RitualSection`, `DiscoverYourRhythmSection` y
+ *   `RegisterSection`, como ya estaban (ver Audit Roadmap §5).
  *
- * InsideOutsideSection (Sprint 05) y RitualSection (Sprint 06) ya no se
- * montan: no forman parte de la arquitectura aprobada (Handoff §9) y cortaban
- * el universo claro con un placeholder vacío y un bloque oscuro. Siguen en el
- * repo y en el roadmap; su ubicación se decide en sus sprints.
- * Ningún bloque futuro se construye anticipadamente para llenar la página.
- *
- * `DiscoverYourRhythmSection` (teaser viejo "¿En qué fase estás hoy?" → /discover)
- * ya no se monta: competía con la entrada real al diagnóstico,
- * `DiscoverYourSkinSection`. El componente se conserva en el repo.
+ * Desde el Pack en adelante la Home vive en campo claro; El Ciclo es el único
+ * plano de color propio, con cortes limpios a ambos lados.
  */
 const Home = () => {
-  usePageTitle();
-  // Llegadas desde otra página a un ancla de Home ("/#pack-x4", "/#ritmo").
+  usePageMeta("home");
+  // Llegadas desde otra página a un ancla de Home ("/#el-ritual", "/#ciclo").
   useHashScroll();
 
   return (
@@ -45,10 +46,10 @@ const Home = () => {
       <Header defaultTone="dark" overlay />
       <main id="main" tabIndex={-1} className="outline-none">
         <HeroLandscape />
-        <CycleSection />
         <PackRitualSection />
         <FourPhasesSection />
-        <RhythmSection />
+        <CalendarSection />
+        <CycleSection />
         <DiscoverYourSkinSection />
         <LearnSection />
         <InstagramUniverseSection />

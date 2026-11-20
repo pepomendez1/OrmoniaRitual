@@ -229,6 +229,10 @@ Texto shipping aprobado:
 
 # 9. Arquitectura objetivo actual de Home
 
+> **ACTUALIZADO 2026-10-29:** el orden vigente es Hero → Pack x4 → Los esenciales →
+> Calendario cíclico → El Ciclo → Descubrí tu piel → Lecturas → Instagram → Unite al ritual.
+> Agua + El Registro salió de Home. Ver `ORMONIA_INTEGRAL_PASS.md`. Lo que sigue es histórico.
+
 La arquitectura visual acordada es:
 
 1. Hero

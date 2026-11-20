@@ -70,19 +70,36 @@ export function InstagramUniverseSection() {
               className="w-[78vw] shrink-0 snap-start md:w-auto"
             >
               {post ? (
-                <a
-                  href={post.permalink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group relative block aspect-[4/5] overflow-hidden rounded-[20px] bg-[#E2D6C4]"
-                >
-                  <img
-                    src={post.image}
-                    alt={post.alt}
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-900 motion-safe:ease-out motion-safe:group-hover:scale-[1.03]"
-                  />
-                </a>
+                /*
+                 * Una pieza sin permalink todavía no es una publicación real:
+                 * se muestra la fotografía pero no se enlaza a ningún lado.
+                 */
+                (() => {
+                  const media = (
+                    <img
+                      src={post.image}
+                      alt={post.alt}
+                      loading="lazy"
+                      style={{ objectPosition: post.objectPosition ?? "center" }}
+                      className="absolute inset-0 h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-900 motion-safe:ease-out motion-safe:group-hover:scale-[1.03]"
+                    />
+                  );
+                  const frame =
+                    "group relative block aspect-[4/5] overflow-hidden rounded-[20px] bg-[#E2D6C4]";
+
+                  return post.permalink ? (
+                    <a
+                      href={post.permalink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={frame}
+                    >
+                      {media}
+                    </a>
+                  ) : (
+                    <div className={frame}>{media}</div>
+                  );
+                })()
               ) : (
                 <div
                   aria-hidden="true"

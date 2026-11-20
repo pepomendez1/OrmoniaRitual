@@ -1,4 +1,8 @@
-import { Header } from "@/components/layout/Header";
+import {
+  Header,
+  HEADER_CLEARANCE,
+  PAGE_LEAD,
+} from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SectionWrapper } from "@/components/ui/SectionWrapper";
 import { EditorialHeading } from "@/components/ui/EditorialHeading";
@@ -11,8 +15,8 @@ const Discover = () => {
   return (
     <>
       <Header />
-      <main id="main" tabIndex={-1} className="pt-28 outline-none md:pt-36">
-        <SectionWrapper>
+      <main id="main" tabIndex={-1} className={`${HEADER_CLEARANCE} outline-none`}>
+        <SectionWrapper className={PAGE_LEAD}>
           <div className="flex flex-col gap-6">
             <EditorialHeading eyebrow={shell.eyebrow} size="xl" as="h1">
               {shell.title}

@@ -1,4 +1,5 @@
 import { SiteLink } from "@/components/ui/SiteLink";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { announcementCopy, brandCopy, footerCopy, type FooterLink } from "@/data/content";
 
 const linkClass =
@@ -38,9 +39,7 @@ export function Footer() {
       <div className="mx-auto w-full max-w-[1320px] px-6 md:px-10">
         <div className="grid gap-12 border-t border-ivory/14 py-16 md:grid-cols-2 md:py-20 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div className="flex flex-col gap-5">
-            <span className="font-display text-[1.75rem] uppercase leading-none tracking-[0.16em]">
-              {brandCopy.wordmark}
-            </span>
+            <Wordmark className="h-[21px] self-start" />
             <p className="max-w-[300px] font-sans text-[13px] leading-relaxed text-ivory/62">
               {footerCopy.tagline}
             </p>

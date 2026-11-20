@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  * tocar el layout.
  *
  * Movimiento deliberadamente mínimo —solo un reveal y la transición del CTA—
- * porque esta pieza entra justo después de la escena de agua, que ya trae
+ * porque esta pieza entra justo después de El Ciclo, que ya trae
  * bastante. Acá trabaja la fotografía.
  */
 export function DiscoverYourSkinSection() {
@@ -79,18 +79,43 @@ export function DiscoverYourSkinSection() {
         </div>
       )}
 
-      {/* Velo de legibilidad, solo del lado del copy. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage: isDark
-            ? "linear-gradient(90deg, rgba(26,18,12,0.76) 0%, rgba(26,18,12,0.54) 34%, rgba(26,18,12,0.18) 62%, rgba(26,18,12,0) 84%)"
-            : "linear-gradient(90deg, rgba(242,235,221,0.72) 0%, rgba(242,235,221,0.44) 36%, rgba(242,235,221,0.12) 64%, rgba(242,235,221,0) 86%)",
-        }}
-      />
+      {/*
+        Velo de legibilidad, solo del lado del copy. Si la foto declara su
+        propio velo (`media.scrim`), se usa ese —más liviano y pensado para
+        esa imagen—; si no, el genérico del tono. En mobile el copy va al pie
+        y el velo se concentra abajo.
+      */}
+      {media.scrim ? (
+        <>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 hidden md:block"
+            style={{ backgroundImage: media.scrim }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 md:hidden"
+            style={{ backgroundImage: media.scrimMobile ?? media.scrim }}
+          />
+        </>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: isDark
+              ? "linear-gradient(90deg, rgba(26,18,12,0.76) 0%, rgba(26,18,12,0.54) 34%, rgba(26,18,12,0.18) 62%, rgba(26,18,12,0) 84%)"
+              : "linear-gradient(90deg, rgba(242,235,221,0.72) 0%, rgba(242,235,221,0.44) 36%, rgba(242,235,221,0.12) 64%, rgba(242,235,221,0) 86%)",
+          }}
+        />
+      )}
 
-      <div className="absolute inset-0 flex items-center px-6 sm:px-10 lg:px-[7vw]">
+      <div
+        className={cn(
+          "absolute inset-0 flex px-6 sm:px-10 lg:px-[7vw]",
+          media.scrim ? "items-end pb-16 md:items-center md:pb-0" : "items-center"
+        )}
+      >
         <div
           ref={revealRef}
           className={cn("max-w-[520px]", isDark ? "text-ivory" : "text-ink")}

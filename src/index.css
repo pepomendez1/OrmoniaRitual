@@ -2,6 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ─── Tipografías de marca ORMONIA ─────────────────────────────────────────
+ *
+ * Archivos en `public/fonts/`, sin renombrar ni convertir.
+ *
+ * ⚠️ LICENCIAS: Cardone y Yorick son versiones TRIAL. Sirven para desarrollo
+ * y prototipo; NO están licenciadas para producción. Antes del deploy
+ * comercial, reemplazarlas por los webfonts con licencia (idealmente WOFF2).
+ *
+ * Pesos reales, sin falsificar: cada @font-face declara un RANGO de pesos que
+ * apunta a un único archivo, así un `font-weight` intermedio usa el corte
+ * real más cercano en vez de un negrita sintético. Además `font-synthesis:
+ * none` (en `html`) impide bold u oblicuas falsas.
+ */
+
+/* Cardone Light Italic — acento editorial (nombres de serum, frases). Solo existe este corte. */
+@font-face {
+  font-family: "Cardone";
+  src: url("/fonts/CardoneTrial-LightItalic.otf") format("opentype");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Yorick Regular — detalle controlado (ingredientes, numeraciones). */
+@font-face {
+  font-family: "Yorick";
+  src: url("/fonts/YorickTrial-Regular.otf") format("opentype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ALT Systema — sans funcional. Regular cubre hasta 450; Semibold, de 500 en adelante. */
+@font-face {
+  font-family: "ALT Systema";
+  src: url("/fonts/ALTSystema-Regular.ttf") format("truetype");
+  font-weight: 100 450;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "ALT Systema";
+  src: url("/fonts/ALTSystema-Semibold.ttf") format("truetype");
+  font-weight: 500 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     /* ORMONIA — paleta cálida y térrea (HSL) */
@@ -56,13 +106,30 @@
     --color-amber: 38 70% 50%;
 
     /*
-      Tipografía display.
-      Cuando la fuente de marca 'Field Studies Flora' esté disponible,
-      añade un bloque @font-face y colócala primera en esta lista.
-      Fraunces actúa como fallback serif editorial mientras tanto.
+      Sistema tipográfico (roles del packaging).
+
+      --font-display    Fraunces. Titulares editoriales grandes (Hero, El
+                        Ritual, Test, Calendario, About, Lecturas). Es la
+                        serif que el sitio tenía antes de las fuentes de marca.
+      --font-editorial  Cardone Light Italic. SOLO acentos: nombres de serum
+                        (Clarity, Bloom, Radiance, Restore), frases cortas,
+                        citas. Nunca body, UI ni todos los titulares.
+                        "Newsreader" va segunda únicamente como respaldo de
+                        glyphs (Cardone Trial no trae á í ó ú ñ ¿ ¡ $ / #).
+      --font-sans       ALT Systema. Regular: body, PDP, formularios, carrito,
+                        búsqueda, cuenta. Semibold: botones, navegación,
+                        eyebrows, labels, precios.
+      --font-accent     Yorick. Detalles muy controlados: ingredientes,
+                        numeraciones, metadata de producto. Fraunces cubre
+                        los acentos que Yorick Trial no trae.
+
+      El wordmark ORMONIA NO usa ninguna de estas: es el logotipo vectorial
+      (`src/components/brand/Wordmark.tsx`).
     */
-    --font-display: 'Field Studies Flora', 'Fraunces', ui-serif, Georgia, serif;
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Fraunces", ui-serif, Georgia, serif;
+    --font-editorial: "Cardone", "Newsreader", ui-serif, Georgia, serif;
+    --font-sans: "ALT Systema", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --font-accent: "Yorick", "Fraunces", ui-serif, Georgia, serif;
   }
 
   .dark {
@@ -103,6 +170,8 @@
 
   html {
     scroll-behavior: smooth;
+    /* Sin negritas ni itálicas sintéticas: solo los cortes reales. */
+    font-synthesis: none;
   }
 
   body {
@@ -113,6 +182,7 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Los titulares heredan la serif editorial (Fraunces 500), como antes. */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 500;
@@ -153,3 +223,15 @@ body,
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Labels funcionales: todo texto en mayúsculas espaciadas (navegación,
+ * botones, eyebrows, etiquetas, metadata destacada) usa ALT Systema
+ * Semibold. Es una sola regla en vez de repetir el peso en cada componente.
+ * En Cardone y Yorick no tiene efecto (un único corte); los titulares en
+ * Fraunces quedan fuera para conservar su peso de siempre.
+ */
+.uppercase:not(.font-display) {
+  font-weight: 600;
+}
+

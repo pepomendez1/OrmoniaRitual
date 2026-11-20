@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { skinQuizCopy, skinQuizQuestions } from "@/data/skinQuiz";
 import { useSkinQuiz } from "@/hooks/useSkinQuiz";
@@ -24,10 +24,25 @@ const LEAVE_MS = 190;
  * de opciones en `lib/skinQuiz`. Esta vista solo presenta y encamina.
  */
 const DiscoverSkin = () => {
-  usePageTitle("Descubrí tu piel");
+  usePageTitle("Test de perfil de piel");
   const navigate = useNavigate();
   const quiz = useSkinQuiz(skinQuizQuestions);
   const [leaving, setLeaving] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const firstStep = useRef(true);
+
+  /*
+   * Al cambiar de paso, el foco va al titular de la pregunta nueva: quien usa
+   * teclado o lector de pantalla no queda varado en un botón que ya no
+   * corresponde. En la carga inicial no se mueve nada.
+   */
+  useEffect(() => {
+    if (firstStep.current) {
+      firstStep.current = false;
+      return;
+    }
+    headingRef.current?.focus({ preventScroll: true });
+  }, [quiz.step]);
 
   const reduced =
     typeof window !== "undefined" &&
@@ -76,7 +91,12 @@ const DiscoverSkin = () => {
       progress={quiz.progress}
       stepLabel={stepLabel}
     >
-      <div className="flex flex-1 flex-col justify-between gap-10 px-6 py-10 md:px-12 lg:px-16 lg:py-14">
+      <div
+        className={cn(
+          "flex flex-1 flex-col justify-between gap-10 px-6 pt-10 md:px-12 lg:px-16 lg:py-14",
+          quiz.isEmailStep && "pb-10"
+        )}
+      >
         <div
           key={quiz.question?.id ?? "email"}
           className={cn(
@@ -94,7 +114,10 @@ const DiscoverSkin = () => {
                 <p className="font-sans text-[10px] uppercase tracking-[0.24em] text-ink/66">
                   {quiz.question.category}
                 </p>
-                <h1 className="mt-6 font-display text-[clamp(1.75rem,2.9vw,2.5rem)] leading-[1.1] tracking-[-0.03em]">
+                <h1
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="mt-6 font-display outline-none focus-visible:shadow-none text-[clamp(1.75rem,2.9vw,2.5rem)] leading-[1.1] tracking-[-0.03em]">
                   {quiz.question.question}
                 </h1>
                 {quiz.question.helper && (
@@ -118,17 +141,23 @@ const DiscoverSkin = () => {
                     />
                   ))}
                 </div>
+
+                <div className="mt-10 lg:hidden">
+                  <WhyWeAsk explanation={quiz.question.explanation} />
+                </div>
               </div>
             )
           )}
         </div>
 
         {!quiz.isEmailStep && quiz.question && (
-          <div className="flex flex-col gap-7">
-            <div
-              aria-live="polite"
-              className="flex flex-wrap items-center gap-5"
-            >
+          /*
+            En mobile la navegación queda fija abajo (el "¿por qué?" sube
+            junto a la pregunta): con muchas opciones, CONTINUAR no se va de
+            la pantalla. En desktop el bloque queda como estaba.
+          */
+          <div className="flex flex-col gap-7 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:-mx-6 max-lg:border-t max-lg:border-ink/10 max-lg:bg-ivory max-lg:px-6 max-lg:py-4 max-md:pb-[max(1rem,env(safe-area-inset-bottom))] md:max-lg:-mx-12 md:max-lg:px-12">
+            <div aria-live="polite" className="flex flex-wrap items-center gap-5">
               <button
                 type="button"
                 onClick={() => transition(quiz.back)}
@@ -159,7 +188,9 @@ const DiscoverSkin = () => {
               )}
             </div>
 
-            <WhyWeAsk explanation={quiz.question.explanation} />
+            <div className="hidden lg:block">
+              <WhyWeAsk explanation={quiz.question.explanation} />
+            </div>
           </div>
         )}
       </div>

@@ -6,17 +6,49 @@ import { ProductRailCard } from "@/components/ui/ProductRailCard";
 import { products } from "@/data/products";
 import { fourPhasesCopy } from "@/data/content";
 
-/** Campo de toda la zona comercial: el mismo con el que cierra el Pack x4. */
+/** Campo de toda la zona comercial: el mismo con el que cierra El Ritual. */
 const FIELD = "#F2EBDD";
+
+/** Separación entre tarjetas del riel. Debe coincidir con el `gap-5` del track. */
+const RAIL_GAP = "20px";
+
+/**
+ * Cuántas tarjetas entran en el ancho visible: tres enteras y un 45% de la
+ * cuarta.
+ *
+ * Ese asomo es la única señal de que el riel sigue, así que tiene que leerse
+ * como una decisión y no como un recorte. Antes el ancho de tarjeta estaba
+ * fijado y el asomo era lo que quedaba, de modo que derivaba con el viewport:
+ * 45% en un portátil, 91% cerca de los 2000px —una tarjeta casi entera pero
+ * cortada, que se lee como error— y 100% más arriba, dejando aire muerto a la
+ * derecha. Ahora la relación se invierte: el asomo es el dato fijo y el ancho
+ * de tarjeta se deduce de él, así que la proporción es idéntica en cualquier
+ * pantalla.
+ */
+const VISIBLE_UNITS = "3.45";
+
+/** Techo de la tarjeta: por encima, la fotografía empezaría a aplastar la página. */
+const CARD_MAX = "680px";
 
 /**
  * Margen lateral común al encabezado, al riel y a las flechas.
  *
- * Alinea la primera tarjeta con el título en cualquier ancho y, al crecer con
- * el viewport, mantiene el contenido centrado sin encerrar el riel en una caja:
- * las tarjetas siguen sangrando por el borde derecho.
+ * Alinea la primera tarjeta con el título en cualquier ancho. Su tercer término
+ * solo entra en juego cuando la tarjeta ya tocó `CARD_MAX`: a partir de ahí el
+ * margen absorbe el excedente para que el asomo siga valiendo 45%. Por debajo
+ * de ~2450px nunca se activa, así que el riel sangra por el borde derecho y
+ * ocupa todo el ancho disponible en vez de quedar centrado en una caja fija.
  */
-const GUTTER = "max(1.5rem, min(2.5rem, 4vw), calc((100vw - 1560px) / 2 + 2.5rem))";
+const GUTTER = `max(1.5rem, min(2.5rem, 4vw), calc(100vw - ${VISIBLE_UNITS} * ${CARD_MAX} - 3 * ${RAIL_GAP}))`;
+
+/**
+ * Ancho de tarjeta, resuelto desde el espacio realmente visible.
+ *
+ * El tramo visible va del borde izquierdo de la primera tarjeta al borde de la
+ * ventana, es decir `100vw - gutter`, y contiene `VISIBLE_UNITS` tarjetas más
+ * los tres gaps que las separan.
+ */
+const CARD = `calc((100vw - var(--rail-gutter) - 3 * ${RAIL_GAP}) / ${VISIBLE_UNITS})`;
 
 /**
  * Alto del bloque de nombre/precio/fase, incluido el respiro inferior del riel.
@@ -38,8 +70,9 @@ const META_BLOCK = "72px";
  *
  * ESCALABLE
  * La sección recorre el array `products`: sumar AURA o un quinto serum es
- * agregarlo ahí. El ancho de tarjeta es una fracción del viewport, no una
- * columna de grilla, así que la cantidad de items no altera la composición.
+ * agregarlo ahí. El ancho de tarjeta sale del espacio visible, no de una
+ * columna de grilla ni de la cantidad de productos, así que sumar items alarga
+ * el riel sin tocar la composición.
  */
 export function FourPhasesSection() {
   const headerRef = useScrollReveal<HTMLDivElement>();
@@ -56,23 +89,35 @@ export function FourPhasesSection() {
       id="serums"
       aria-labelledby="serums-heading"
       className="relative overflow-hidden pb-24 pt-14 md:pb-28 md:pt-16"
-      style={{ backgroundColor: FIELD, "--rail-gutter": GUTTER } as CSSProperties}
+      style={
+        {
+          backgroundColor: FIELD,
+          "--rail-gutter": GUTTER,
+          "--rail-card": CARD,
+        } as CSSProperties
+      }
     >
-      {/* Encabezado compacto: titular y bajada como un solo grupo. */}
-      <div
-        ref={headerRef}
-        className="max-w-[560px] text-ink"
-        style={{ paddingInline: "var(--rail-gutter)" }}
-      >
-        <h2
-          id="serums-heading"
-          className="font-display text-[clamp(2.1rem,6vw,2.8rem)] leading-[1.02] tracking-[-0.035em] lg:text-[clamp(2.4rem,3.2vw,3.2rem)] lg:leading-[0.98]"
-        >
-          {fourPhasesCopy.title}
-        </h2>
-        <p className="mt-4 max-w-[400px] font-sans text-[13px] leading-relaxed text-ink/64 md:mt-5 md:text-[14px]">
-          {fourPhasesCopy.body}
-        </p>
+      {/*
+        Encabezado compacto: titular y bajada como un solo grupo.
+
+        El margen lateral y el ancho máximo van en elementos distintos a
+        propósito: con `box-sizing: border-box` un `max-width` en el mismo nodo
+        que el padding acota la caja *incluyendo* ese padding, y como el gutter
+        crece con el viewport, en pantallas anchas el texto se quedaba sin
+        ancho y caía una palabra por línea.
+      */}
+      <div style={{ paddingInline: "var(--rail-gutter)" }}>
+        <div ref={headerRef} className="max-w-[560px] text-ink">
+          <h2
+            id="serums-heading"
+            className="font-display text-[clamp(2.1rem,6vw,2.8rem)] leading-[1.02] tracking-[-0.035em] lg:text-[clamp(2.4rem,3.2vw,3.2rem)] lg:leading-[0.98]"
+          >
+            {fourPhasesCopy.title}
+          </h2>
+          <p className="mt-4 max-w-[400px] font-sans text-[13px] leading-relaxed text-ink/64 md:mt-5 md:text-[14px]">
+            {fourPhasesCopy.body}
+          </p>
+        </div>
       </div>
 
       <div className="relative mt-9 md:mt-11">

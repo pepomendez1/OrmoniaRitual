@@ -1,3 +1,4 @@
+import { productionMedia } from "./productionMedia";
 import type {
   QuizOption,
   QuizQuestion,
@@ -178,17 +179,36 @@ export interface VisualScene {
   tone: string;
   /** Asset real, o `null` mientras el material no exista. */
   media: { kind: "video"; src: string } | { kind: "image"; src: string } | null;
+  /** Recorte del asset dentro del panel vertical. */
+  objectPosition?: string;
+  /**
+   * `contain` para ilustraciones que no admiten recorte: se muestran enteras
+   * sobre `tone`, que debe coincidir con el fondo de la imagen.
+   */
+  fit?: "cover" | "contain";
+  /**
+   * Velo mínimo al pie, para la leyenda en ivory sobre fotos claras
+   * (rostros). Opcional; sin él no se agrega nada.
+   */
+  captionScrim?: string;
   /** Nota de producción, visible solo mientras no haya asset. */
   pending?: string;
 }
+
+/** Velo al pie compartido por las escenas de rostro. */
+const FACE_CAPTION_SCRIM =
+  "linear-gradient(0deg, rgba(20,14,10,0.42) 0%, rgba(20,14,10,0.16) 22%, rgba(20,14,10,0) 38%)";
 
 export const skinQuizVisuals: Record<VisualGroup, VisualScene> = {
   observar: {
     id: "observar",
     label: "Observar",
     caption: "Mirar la piel antes de intervenirla.",
-    tone: "#C2B1A4",
-    media: null,
+    // Producción real: la mirada en primer plano. Primer bloque del test.
+    tone: "#8A7564",
+    media: { kind: "image", src: productionMedia.skinProfile.quizIntro.src },
+    objectPosition: productionMedia.skinProfile.quizIntro.objectPosition,
+    captionScrim: FACE_CAPTION_SCRIM,
     pending: "Producción · macro de piel y luz",
   },
   sentir: {
@@ -196,7 +216,14 @@ export const skinQuizVisuals: Record<VisualGroup, VisualScene> = {
     label: "Sentir",
     caption: "Lo que la piel dice cuando no la forzamos.",
     tone: "#D3C6B2",
-    media: null,
+    // TEMPORAL · prueba visual de producción. Agrupa las preguntas de
+    // sensación, incomodidad, reactividad y observación, así que la escena de
+    // piel en contacto con el agua es la semánticamente correcta.
+    media: { kind: "image", src: "/production-temp/web/03-model-water.jpg" },
+    // El panel es más angosto que la foto: el recorte es horizontal. Se
+    // desplaza a la izquierda para conservar entera a la persona y el punto
+    // donde la piel toca el agua.
+    objectPosition: "42% 50%",
     pending: "Producción · textura y manos",
   },
   cambio: {
@@ -210,8 +237,11 @@ export const skinQuizVisuals: Record<VisualGroup, VisualScene> = {
     id: "resultado",
     label: "Tu lectura",
     caption: "Lo que aparece cuando se ordena lo observado.",
-    tone: "#B4BC78",
-    media: null,
+    // Producción real: retrato editorial de rostro y piel.
+    tone: "#9A8A7C",
+    media: { kind: "image", src: productionMedia.skinProfile.quizResult.src },
+    objectPosition: productionMedia.skinProfile.quizResult.objectPosition,
+    captionScrim: FACE_CAPTION_SCRIM,
     pending: "Producción · retrato editorial",
   },
 };
@@ -297,7 +327,7 @@ export const skinResultCopy = {
   needsTitle: "Lo que tu piel parece pedir ahora",
   ritualTitle: "Tu ritual Ormonia",
   ritualPending:
-    "La recomendación se completa cuando conectemos el modelo de fenotipos.",
+    "La recomendación se completa cuando conectemos el modelo de perfiles de piel.",
   ritualSlots: [
     { id: "primary", label: "Recomendación principal" },
     { id: "complement", label: "Complemento" },
@@ -305,4 +335,5 @@ export const skinResultCopy = {
   ],
   restart: "Volver a empezar",
   home: "Ir al inicio",
+  shop: "Ver la tienda",
 };

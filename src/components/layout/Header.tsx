@@ -1,18 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Menu, ShoppingBag } from "lucide-react";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+import { MobileMenu } from "@/components/layout/MobileMenu";
+import { useSearchOverlay } from "@/components/shop/searchContext";
 import { useScrollDirection } from "@/hooks/useScrollDirection";
+import { useCart } from "@/hooks/useCart";
 import { brandCopy, nav } from "@/data/content";
 import { cn } from "@/lib/utils";
+import { Wordmark } from "@/components/brand/Wordmark";
 
 /**
  * Tono del header según lo que tenga detrás.
@@ -32,6 +28,31 @@ interface HeaderProps {
    */
   overlay?: boolean;
 }
+
+/**
+ * Compensación del header fijo para las páginas interiores.
+ *
+ * El header no ocupa lugar en el flujo, así que el `<main>` de cada página
+ * tiene que reservar exactamente su altura —las mismas medidas que la barra
+ * interna de más abajo— o el primer bloque queda tapado. Nada más que eso: el
+ * aire editorial lo pone `PAGE_LEAD`.
+ *
+ * Antes cada página resolvía esto por su cuenta con un `pt-28 md:pt-36` que ya
+ * incluía el respiro, y encima el `SectionWrapper` sumaba su propio `py-32`.
+ * El resultado era un hueco de ~190px bajo el header: la página parecía
+ * arrancar caída.
+ */
+export const HEADER_CLEARANCE = "pt-16 md:pt-[76px] xl:pt-[82px]";
+
+/**
+ * Aire entre el header y el primer bloque de una página interior.
+ *
+ * Deliberadamente menor que el ritmo entre secciones del `SectionWrapper`: una
+ * sección que sigue a otra necesita separarse, pero la primera solo tiene que
+ * despegarse del header. Se aplica sobre el wrapper, donde `cn` lo resuelve
+ * por encima del `py` de la sección.
+ */
+export const PAGE_LEAD = "pt-14 md:pt-16 lg:pt-20";
 
 /** Línea de referencia (px) para decidir qué escena está detrás del header. */
 const TONE_LINE = 72;
@@ -66,8 +87,9 @@ const HERO_EXIT_LEAD = 120;
  * - Al scrollear hacia arriba vuelve como navegación flotante transparente,
  *   sin la franja de envío; la sección de atrás sigue viéndose.
  *
- * CUENTA / BUSCAR / CARRITO todavía no tienen destino: se muestran como
- * afordancias inertes hasta que exista Shopify. No inventan navegación.
+ * CUENTA navega a /account, BUSCAR abre el buscador y CARRITO el mini
+ * carrito, con la cantidad real del carrito frontend ("CARRITO 2"). En mobile
+ * queda a la vista el carrito (ícono + cantidad); el resto vive en el menú.
  */
 export function Header({ defaultTone = "dark", overlay = false }: HeaderProps) {
   const [open, setOpen] = useState(false);
@@ -78,6 +100,10 @@ export function Header({ defaultTone = "dark", overlay = false }: HeaderProps) {
   const barRef = useRef<HTMLDivElement>(null);
 
   const direction = useScrollDirection(12);
+  const { cart, setDrawerOpen } = useCart();
+  const search = useSearchOverlay();
+  const count = cart.totalQuantity;
+  const cartLabel = count > 0 ? `${nav.utilities.cart.label}, ${count} ${count === 1 ? "producto" : "productos"}` : nav.utilities.cart.label;
 
   /*
    * Un solo bucle de scroll gobierna las tres cosas que dependen de él: el
@@ -173,6 +199,14 @@ export function Header({ defaultTone = "dark", overlay = false }: HeaderProps) {
       isActive && (isLight ? "text-ivory after:w-full" : "text-ink after:w-full")
     );
 
+  const utilityClass = cn(
+    linkBase,
+    "after:absolute after:-bottom-1.5 after:left-0 after:h-px after:w-0 after:transition-all after:duration-500 after:ease-out hover:after:w-full",
+    isLight
+      ? "text-ivory/90 hover:text-ivory after:bg-ivory"
+      : "text-ink/72 hover:text-ink after:bg-ink"
+  );
+
   return (
     <>
       {/* Franja de envío: en el flujo del documento, queda atrás al scrollear. */}
@@ -202,7 +236,7 @@ export function Header({ defaultTone = "dark", overlay = false }: HeaderProps) {
         {/* Sin velo, sin plano, sin blur: la navegación va directo sobre el
             contenido en todos los estados. Solo cambia el color del texto. */}
         <div className="relative h-[64px] md:h-[76px] xl:h-[82px]">
-          <div className="relative mx-auto grid h-full w-full max-w-[1680px] grid-cols-[1fr_auto_1fr] items-center gap-6 px-6 lg:px-10 xl:px-16">
+          <div className="relative mx-auto grid h-full w-full max-w-[1680px] grid-cols-[1fr_auto_1fr] items-center gap-3 px-6 md:gap-6 lg:px-10 xl:px-16">
             {/* Izquierda — navegación */}
             <nav
               aria-label="Navegación principal"
@@ -216,71 +250,19 @@ export function Header({ defaultTone = "dark", overlay = false }: HeaderProps) {
             </nav>
 
             <div className="flex lg:hidden">
-              <Sheet open={open} onOpenChange={setOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Abrir menú"
-                    className={cn(
-                      "-ml-2 h-10 w-10 transition-colors duration-380 ease-out hover:bg-transparent",
-                      isLight ? "text-ivory" : "text-ink"
-                    )}
-                  >
-                    <Menu className="!h-6 !w-6" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-full sm:max-w-sm">
-                  <SheetHeader className="text-left">
-                    <SheetTitle className="font-display text-3xl uppercase tracking-[0.09em]">
-                      {brandCopy.wordmark}
-                    </SheetTitle>
-                  </SheetHeader>
-                  <nav
-                    aria-label="Navegación móvil"
-                    className="mt-8 flex flex-col gap-1"
-                  >
-                    {nav.primary.map((item) =>
-                      item.href ? (
-                        <NavLink
-                          key={item.href}
-                          to={item.href}
-                          onClick={() => setOpen(false)}
-                          className={({ isActive }) =>
-                            cn(
-                              "border-b border-border py-4 font-sans text-[15px] uppercase tracking-[0.12em] transition-colors",
-                              isActive ? "text-accent" : "text-foreground"
-                            )
-                          }
-                        >
-                          {item.label}
-                        </NavLink>
-                      ) : (
-                        <span
-                          key={item.label}
-                          aria-disabled="true"
-                          title="Próximamente"
-                          className="border-b border-border py-4 font-sans text-[15px] uppercase tracking-[0.12em] text-muted-foreground"
-                        >
-                          {item.label}
-                        </span>
-                      )
-                    )}
-                  </nav>
-                  <ul className="mt-8 flex flex-col gap-3">
-                    {nav.utilities.map((item) => (
-                      <li
-                        key={item.label}
-                        aria-disabled="true"
-                        title="Próximamente"
-                        className="font-sans text-[12px] uppercase tracking-[0.14em] text-muted-foreground"
-                      >
-                        {item.label}
-                      </li>
-                    ))}
-                  </ul>
-                </SheetContent>
-              </Sheet>
+              <button
+                type="button"
+                aria-label="Abrir menú"
+                aria-expanded={open}
+                onClick={() => setOpen(true)}
+                className={cn(
+                  "-ml-2 flex h-11 w-11 items-center justify-center transition-colors duration-380 ease-out",
+                  isLight ? "text-ivory" : "text-ink"
+                )}
+              >
+                <Menu className="h-6 w-6" aria-hidden="true" />
+              </button>
+              <MobileMenu open={open} onOpenChange={setOpen} />
             </div>
 
             {/* Centro — wordmark: el elemento dominante del header. */}
@@ -288,43 +270,65 @@ export function Header({ defaultTone = "dark", overlay = false }: HeaderProps) {
               to="/"
               aria-label="ORMONIA — Inicio"
               className={cn(
-                "justify-self-center whitespace-nowrap font-display text-[clamp(2.25rem,2.6vw,3.25rem)] uppercase leading-none tracking-[0.09em] transition-colors duration-380 ease-out",
+                "justify-self-center transition-colors duration-380 ease-out",
                 isLight
-                  ? "text-ivory [text-shadow:0_2px_22px_rgba(25,21,17,0.4)]"
+                  ? "text-ivory [filter:drop-shadow(0_2px_14px_rgba(25,21,17,0.38))]"
                   : "text-ink"
               )}
             >
-              {brandCopy.wordmark}
+              {/* Logotipo oficial (vector), no texto: el mismo ORMONIA® de los frascos. */}
+              <Wordmark title="" className="h-[24px] md:h-[clamp(25px,1.95vw,34px)]" />
             </Link>
 
-            {/* Derecha — utilidades (inertes hasta Shopify) */}
+            {/* Derecha — utilidades. */}
             <ul className="hidden items-center justify-end gap-8 lg:flex xl:gap-11">
-              {nav.utilities.map((item) => (
-                <li
-                  key={item.label}
-                  aria-disabled="true"
-                  title="Próximamente"
-                  className={cn(
-                    linkBase,
-                    "cursor-default",
-                    isLight ? "text-ivory/90" : "text-ink/72"
-                  )}
+              <li>
+                <NavLink to={nav.utilities.account.href} className={linkClass}>
+                  {nav.utilities.account.label}
+                </NavLink>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => search.setOpen(true)}
+                  aria-haspopup="dialog"
+                  className={utilityClass}
                 >
-                  {item.label}
-                </li>
-              ))}
+                  {nav.utilities.search.label}
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setDrawerOpen(true)}
+                  aria-haspopup="dialog"
+                  aria-label={cartLabel}
+                  className={utilityClass}
+                >
+                  {nav.utilities.cart.label}
+                  {count > 0 && <span className="ml-1.5 tabular-nums">{count}</span>}
+                </button>
+              </li>
             </ul>
 
-            <span
-              aria-hidden="true"
+            {/*
+              Mobile: solo el carrito, como ícono con su cantidad. Con el
+              wordmark centrado no entra más en 390px sin achicarlo; BUSCAR,
+              CUENTA y el resto viven en el menú.
+            */}
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              aria-haspopup="dialog"
+              aria-label={cartLabel}
               className={cn(
-                linkBase,
-                "justify-self-end lg:hidden",
-                isLight ? "text-ivory/90" : "text-ink/72"
+                "-mr-2 flex h-11 min-w-11 items-center justify-center gap-1 justify-self-end px-2 font-sans text-[12px] tabular-nums transition-colors duration-380 ease-out lg:hidden",
+                isLight ? "text-ivory" : "text-ink"
               )}
             >
-              Carrito
-            </span>
+              <ShoppingBag className="h-[20px] w-[20px]" aria-hidden="true" />
+              {count > 0 && <span aria-hidden="true">{count}</span>}
+            </button>
           </div>
         </div>
       </header>
